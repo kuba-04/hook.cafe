@@ -44,6 +44,19 @@ export const setName = async (ndk) => {
     await metadataEvent.publish();
 }
 
+
+export const setProfileData = async (ndk, name, avatar) => {
+    const metadataEvent = new NDKEvent(ndk);
+    metadataEvent.kind = 0;
+    const content = JSON.stringify({
+      name: name,
+      avatar: avatar,
+    });
+    metadataEvent.content = content;
+    await metadataEvent.sign();
+    await metadataEvent.publish();
+}
+
 export const getUserProfileName = async (ndk, pubKey) => {
     const user = ndk.getUser({
       npub: pubKey,
@@ -51,4 +64,12 @@ export const getUserProfileName = async (ndk, pubKey) => {
 
     await user.fetchProfile();
     return user.profile.name || '';
-  }
+}
+
+export const getUserProfile = async (ndk, pubKey) => {
+    const user = ndk.getUser({
+      npub: pubKey,
+    });
+
+    return await user.fetchProfile();
+}

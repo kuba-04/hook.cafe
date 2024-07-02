@@ -25,6 +25,7 @@
 	"type": "module",
 	"dependencies": {
 		"@nostr-dev-kit/ndk": "^2.8.2",
+		"crypto-js": "^4.2.0",
 		"d3-scale": "^4.0.2",
 		"nouislider": "^15.8.1"
 	}
