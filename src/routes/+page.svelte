@@ -1,12 +1,17 @@
 <script>
-  import { onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
 
-  import Modal from '../lib/Modal.svelte';
-  import Login from '$lib/Login.svelte';
-  
+  import Modal from "../lib/Modal.svelte";
+  import Login from "$lib/Login.svelte";
+
   import { RELAY_URL } from "../lib/Env";
   import NDK, { NDKEvent } from "@nostr-dev-kit/ndk";
-  import { decryptKey, getUserProfileName, recreateSigner, setName } from "$lib/authUtils";
+  import {
+    decryptKey,
+    getUserProfileName,
+    recreateSigner,
+    setName,
+  } from "$lib/authUtils";
 
   let ndk = new NDK({
     explicitRelayUrls: [RELAY_URL],
@@ -18,20 +23,22 @@
   let name = "";
   let privKey = "";
   let signer;
+  let subscription;
+  let messages = [];
 
   async function handleRegister(event) {
     name = event.detail.name;
     showModal = false;
 
-    privKey = decryptKey(localStorage.getItem('secure'));
-    console.log(privKey)
-    
+    privKey = decryptKey(localStorage.getItem("secure"));
+    console.log(privKey);
+
     if (privKey) {
       isAuthenticated = true;
     }
 
     signer = recreateSigner(privKey);
-    
+
     ndk = new NDK({
       explicitRelayUrls: [RELAY_URL],
       signer: signer,
@@ -51,14 +58,14 @@
     isAuthenticated = true;
 
     signer = recreateSigner(privKey);
-    
+
     ndk = new NDK({
       explicitRelayUrls: [RELAY_URL],
       signer: signer,
     });
 
     await ndk.connect();
-    
+
     await setName(ndk);
     const pubKey = (await signer.user()).npub;
     name = await getUserProfileName(ndk, pubKey);
@@ -66,13 +73,13 @@
 
   function logout() {
     localStorage.clear();
-    isAuthenticated = false;  
+    isAuthenticated = false;
   }
 
   onMount(async () => {
-    const storedUser = localStorage.getItem('user');
-    const decrypted = decryptKey(localStorage.getItem('secure'));
-    
+    const storedUser = localStorage.getItem("user");
+    const decrypted = decryptKey(localStorage.getItem("secure"));
+
     if (storedUser && decrypted) {
       name = storedUser;
       privKey = decrypted;
@@ -80,14 +87,42 @@
     }
 
     signer = recreateSigner(privKey);
-    
+
     ndk = new NDK({
       explicitRelayUrls: [RELAY_URL],
       signer: signer,
     });
 
     await ndk.connect();
-  })
+
+    let filter = { kinds: [1], limit: 10 };
+    subscription = ndk.subscribe(filter, {
+      closeOnEose: false,
+    });
+    subscription.on("event", (event) => {
+      addMessage(event);
+    });
+
+    const initialEvents = await ndk.fetchEvents(filter);
+    messages = Array.from(initialEvents).sort(
+      (a, b) => b.created_at - a.created_at
+    );
+  });
+
+  onDestroy(() => {
+    if (subscription) {
+      subscription.stop();
+    }
+  });
+
+  function addMessage(event) {
+    const exists = messages.some((m) => m.id === event.id);
+    if (!exists) {
+      messages = [event, ...messages].sort(
+        (a, b) => b.created_at - a.created_at
+      );
+    }
+  }
 
   // time picker
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
@@ -101,46 +136,12 @@
     fieldsArray[6] = time_to;
   }
 
-  // async function getLastEvent() {
-  //   await ndk.connect();
-  //   let res = await ndk.fetchEvent(filter);
-  //   if (res?.isValid) {
-  //     return res.content.toString();
-  //   } else {
-  //     throw new Error("no events found");
-  //   }
-  // }
-
-  async function getEvents() {
-    await ndk.connect();
-    let filter = { kinds: [1], limit: 10 };
-    let res = await ndk.fetchEvents(filter);
-    if (res.size > 0) {
-      const sortedEvents = Array.from(res).sort((a, b) => {
-        // Convert timestamps to Date objects
-        const dateA = new Date(a.created_at).getDate();
-        const dateB = new Date(b.created_at).getDate();
-        
-        // Sort in descending order (most recent first)
-        return dateB - dateA;
-      });
-      return sortedEvents;
-    } else {
-      throw new Error("no events found");
-    }
-  }
-
-  // todo: try to subscribe so it will recieve new notes
-  let eventsPromise = getEvents();
-
   function parseEventContent(event) {
     return {
       ...event,
-      parsedContent: event.content.split('|')
+      parsedContent: event.content.split("|"),
     };
   }
-
-
 
   // price slider
   import Slider from "../lib/Slider.svelte";
@@ -179,27 +180,27 @@
   function onChangeWord1() {
     fieldsArray[0] = inputWord1;
     updateMessage();
-  };
+  }
 
   function onChangeWord2() {
     fieldsArray[1] = inputWord2;
     updateMessage();
-  };
+  }
 
   function onChangeWord3() {
     fieldsArray[2] = inputWord3;
     updateMessage();
-  };
+  }
 
   function onChangeWord4() {
     fieldsArray[3] = inputWord4;
     updateMessage();
-  };
+  }
 
   function onChangeCity() {
     fieldsArray[4] = inputCity;
     updateMessage();
-  };
+  }
 
   function updateMessage() {
     message = fieldsArray.join("|");
@@ -209,7 +210,7 @@
       inputWord3.trim().length > 0 &&
       inputWord4.trim().length > 0 &&
       inputCity.trim().length > 0;
-  };
+  }
 
   async function handleSubmit() {
     let loading = true;
@@ -236,12 +237,9 @@
 
 <main>
   {#if showModal}
-  <Modal bind:showModal>
-    <Login 
-      on:register={handleRegister} 
-      on:login={handleLogin}
-    />
-  </Modal>
+    <Modal bind:showModal>
+      <Login on:register={handleRegister} on:login={handleLogin} />
+    </Modal>
   {/if}
   <div
     class="relative isolate overflow-hidden bg-gray-900 py-16 sm:py-24 lg:py-32"
@@ -255,14 +253,14 @@
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
             <button on:click={logout}>Log out</button>
           </p>
-        </div>  
+        </div>
       {:else}
         <div class="absolute top-0 right-0 h-16 w-16">
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
             <button on:click={() => (showModal = true)}>Login</button>
           </p>
         </div>
-      {/if}  
+      {/if}
       <!-- <Auth /> -->
       <!-- {#if $isAuthenticated}
       {:else}
@@ -376,31 +374,33 @@
           </div>
         </div>
         <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
-          {#await eventsPromise}
-            <p>...waiting</p>
-          {:then events}
-            <ul role="list" class="divide-y divide-gray-100">
-              {#each events.map(parseEventContent) as content}
-                <li class="flex justify-between gap-x-6 py-5">
-                  <div class="flex min-w-0 gap-x-4">
-                    <!-- <img class="h-12 w-12 flex-none rounded-full bg-gray-50" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt=""> -->
-                    <div class="min-w-0 flex-auto">
-                      <p class="text-sm font-semibold leading-6 text-white">
-                        {content.parsedContent[0]} {content.parsedContent[1]} {content.parsedContent[2]} {content.parsedContent[3]}
-                      </p>
-                      <p class="mt-1 truncate text-xs leading-5 text-gray-500">leslie.alexander@example.com</p>
-                    </div>
+          <ul role="list" class="divide-y divide-gray-100">
+            {#each messages.map(parseEventContent) as content}
+              <li class="flex justify-between gap-x-6 py-5">
+                <div class="flex min-w-0 gap-x-4">
+                  <!-- <img class="h-12 w-12 flex-none rounded-full bg-gray-50" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt=""> -->
+                  <div class="min-w-0 flex-auto">
+                    <p class="text-sm font-semibold leading-6 text-white">
+                      {content.parsedContent[0]}
+                      {content.parsedContent[1]}
+                      {content.parsedContent[2]}
+                      {content.parsedContent[3]}
+                    </p>
+                    <p class="mt-1 truncate text-xs leading-5 text-gray-500">
+                      leslie.alexander@example.com
+                    </p>
                   </div>
-                  <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
-                    <p class="text-sm leading-6 text-gray-200">{content.parsedContent[4]} | {content.parsedContent[5]} - {content.parsedContent[6]}</p>
-                    <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
-                  </div>
-                </li>
-              {/each}
-            </ul>
-          {:catch error}
-            <p style="color: red">{error.message}</p>
-          {/await}
+                </div>
+                <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
+                  <p class="text-sm leading-6 text-gray-200">
+                    {content.parsedContent[4]} | {content.parsedContent[5]} - {content
+                      .parsedContent[6]}
+                  </p>
+                  <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
+                </div>
+              </li>
+            {/each}
+          </ul>
         </dl>
       </div>
     </div>
@@ -414,7 +414,6 @@
       ></div>
     </div>
   </div>
-
 </main>
 
 <!-- <style lang="postcss">
