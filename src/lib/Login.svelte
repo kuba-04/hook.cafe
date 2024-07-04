@@ -1,6 +1,7 @@
 <script>
   import { recreateSigner, register } from './authUtils';
   import { createEventDispatcher } from 'svelte';
+  import { avatars, getRandomAvatar } from './avatars';
 
   export let name = "";
   export let privKey = "";
@@ -24,7 +25,8 @@
     loading = true;
     try {
       register();
-      dispatchRegisteredEvent(name);
+      let avatar = getRandomAvatar() 
+      dispatchRegisteredEvent({name, avatar});
       localStorage.setItem('user', name );
     } catch (error) {
       if (error instanceof Error) {
@@ -57,8 +59,8 @@
     dispatch('login', { privKey });
   }
 
-  function dispatchRegisteredEvent(name) {
-    dispatch('register', { name });
+  function dispatchRegisteredEvent({name, avatar}) {
+    dispatch('register', { name, avatar });
   }
 
 </script>

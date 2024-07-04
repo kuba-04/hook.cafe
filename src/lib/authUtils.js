@@ -3,7 +3,7 @@ import { generatePrivateKey } from "nostr-tools";
 import CryptoJS from 'crypto-js';
 
 // todo replace from props
-const PASSPHRASE = '';
+const PASSPHRASE = 'askdjfaslkdfjnaslkjfnasdkfljn';
 
 export const createNewSigner = () => {
     const privateKey = generatePrivateKey();
