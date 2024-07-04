@@ -5,12 +5,15 @@
   import Login from "$lib/Login.svelte";
 
   import { RELAY_URL } from "../lib/Env";
-  import NDK, { NDKEvent } from "@nostr-dev-kit/ndk";
+  import NDK, { NDKEvent, NDKUser } from "@nostr-dev-kit/ndk";
+  import { nip19 } from 'nostr-tools';
   import {
     decryptKey,
-    getUserProfileName,
+    encryptKey,
+    getUserProfile,
     recreateSigner,
     setName,
+    setProfileData,
   } from "$lib/authUtils";
 
   let ndk = new NDK({
@@ -21,6 +24,7 @@
   let isAuthenticated = false;
 
   let name = "";
+  let avatar = "";
   let privKey = "";
   let signer;
   let subscription;
@@ -28,6 +32,7 @@
 
   async function handleRegister(event) {
     name = event.detail.name;
+    avatar = event.detail.avatar;
     showModal = false;
 
     privKey = decryptKey(localStorage.getItem("secure"));
@@ -46,34 +51,33 @@
 
     await ndk.connect();
 
-    await setName(ndk);
+    await setProfileData(ndk, name, avatar);
+
     const pubKey = (await signer.user()).npub;
-    name = await getUserProfileName(ndk, pubKey);
+    // name = await getUserProfileName(ndk, pubKey);
+    const profile = await getUserProfile(ndk, pubKey);
+    name = profile.name || '';
+    avatar = profile.avatar || '';
   }
 
   async function handleLogin(event) {
     privKey = event.detail.privKey;
-    showModal = false;
-
-    isAuthenticated = true;
-
+    localStorage.setItem('secure', encryptKey(privKey));
     signer = recreateSigner(privKey);
-
     ndk = new NDK({
       explicitRelayUrls: [RELAY_URL],
       signer: signer,
     });
-
     await ndk.connect();
+    isAuthenticated = true;
+    showModal = false;
 
-    await setName(ndk);
     const pubKey = (await signer.user()).npub;
-    name = await getUserProfileName(ndk, pubKey);
-  }
+    const profile = await getUserProfile(ndk, pubKey);
+    name = profile.name || '';
+    avatar = profile.avatar || '';
 
-  function logout() {
-    localStorage.clear();
-    isAuthenticated = false;
+    await initMessages();
   }
 
   onMount(async () => {
@@ -95,6 +99,14 @@
 
     await ndk.connect();
 
+    const pubKey = (await signer.user()).npub;
+    const profile = await getUserProfile(ndk, pubKey);
+    avatar = profile.avatar || "";
+
+    await initMessages();
+  });
+
+  async function initMessages() {
     let filter = { kinds: [1], limit: 10 };
     subscription = ndk.subscribe(filter, {
       closeOnEose: false,
@@ -105,9 +117,9 @@
 
     const initialEvents = await ndk.fetchEvents(filter);
     messages = Array.from(initialEvents).sort(
-      (a, b) => b.created_at - a.created_at
+    (a, b) => b.created_at - a.created_at
     );
-  });
+  };
 
   onDestroy(() => {
     if (subscription) {
@@ -145,6 +157,7 @@
 
   // price slider
   import Slider from "../lib/Slider.svelte";
+  import { goto } from "$app/navigation";
   let minValue;
   let maxValue;
 
@@ -233,6 +246,15 @@
     ndkEvent.content = message;
     ndkEvent.publish();
   }
+
+  async function getEventOwnerName(ndkEvent) {
+    const authorPubKey = ndkEvent.pubkey;
+    const author = ndk.getUser({pubkey: authorPubKey});
+    const profile = author.fetchProfile();
+    console.log('profile: ', profile)
+    return await profile?.name;
+    // return getUserProfile(ndk, authorPubKey);
+  }
 </script>
 
 <main>
@@ -248,10 +270,14 @@
       {#if isAuthenticated}
         <div class="absolute top-0 right-0 h-16 w-16">
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
-            <a href="/profile">Hi, {name}!</a>
-          </p>
-          <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
-            <button on:click={logout}>Log out</button>
+            <a href="/profile">
+              <img
+                class="h-12 w-12 flex-none rounded-full bg-gray-50"
+                src={avatar}
+                alt="avatar"
+                on:click={() => goto('/profile')}
+              />  
+            </a>
           </p>
         </div>
       {:else}
@@ -375,16 +401,17 @@
         </div>
         <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
           <ul role="list" class="divide-y divide-gray-100">
-            {#each messages.map(parseEventContent) as content}
+            {#each messages as event}
               <li class="flex justify-between gap-x-6 py-5">
                 <div class="flex min-w-0 gap-x-4">
                   <!-- <img class="h-12 w-12 flex-none rounded-full bg-gray-50" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt=""> -->
+                  <!-- <img class="h-12 w-12 flex-none rounded-full bg-gray-50" src="{getEventOwnerProfile(event).avatar}" alt=""> -->
                   <div class="min-w-0 flex-auto">
                     <p class="text-sm font-semibold leading-6 text-white">
-                      {content.parsedContent[0]}
-                      {content.parsedContent[1]}
-                      {content.parsedContent[2]}
-                      {content.parsedContent[3]}
+                      {parseEventContent(event).parsedContent[0]}
+                        {parseEventContent(event).parsedContent[1]}
+                        {parseEventContent(event).parsedContent[2]}
+                        {parseEventContent(event).parsedContent[3]}
                     </p>
                     <p class="mt-1 truncate text-xs leading-5 text-gray-500">
                       leslie.alexander@example.com
@@ -393,8 +420,7 @@
                 </div>
                 <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
                   <p class="text-sm leading-6 text-gray-200">
-                    {content.parsedContent[4]} | {content.parsedContent[5]} - {content
-                      .parsedContent[6]}
+                    {parseEventContent(event).parsedContent[4]} | {parseEventContent(event).parsedContent[5]} - {parseEventContent(event).parsedContent[6]}
                   </p>
                   <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
                 </div>
