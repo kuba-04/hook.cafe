@@ -5,14 +5,12 @@
   import Login from "$lib/Login.svelte";
 
   import { RELAY_URL } from "../lib/Env";
-  import NDK, { NDKEvent, NDKUser } from "@nostr-dev-kit/ndk";
-  import { nip19 } from 'nostr-tools';
+  import NDK, { NDKEvent } from "@nostr-dev-kit/ndk";
   import {
     decryptKey,
     encryptKey,
     getUserProfile,
     recreateSigner,
-    setName,
     setProfileData,
   } from "$lib/authUtils";
 
@@ -29,6 +27,7 @@
   let signer;
   let subscription;
   let messages = [];
+  let userProfiles = new Map();
 
   async function handleRegister(event) {
     name = event.detail.name;
@@ -36,7 +35,6 @@
     showModal = false;
 
     privKey = decryptKey(localStorage.getItem("secure"));
-    console.log(privKey);
 
     if (privKey) {
       isAuthenticated = true;
@@ -54,10 +52,11 @@
     await setProfileData(ndk, name, avatar);
 
     const pubKey = (await signer.user()).npub;
-    // name = await getUserProfileName(ndk, pubKey);
     const profile = await getUserProfile(ndk, pubKey);
     name = profile.name || '';
     avatar = profile.avatar || '';
+
+    await initMessages();
   }
 
   async function handleLogin(event) {
@@ -82,12 +81,17 @@
 
   onMount(async () => {
     const storedUser = localStorage.getItem("user");
-    const decrypted = decryptKey(localStorage.getItem("secure"));
+    let decrypted;
+    if (storedUser) {
+      decrypted = decryptKey(localStorage.getItem("secure"));
+    }
 
     if (storedUser && decrypted) {
       name = storedUser;
       privKey = decrypted;
       isAuthenticated = true;
+    } else {
+      return;
     }
 
     signer = recreateSigner(privKey);
@@ -107,18 +111,25 @@
   });
 
   async function initMessages() {
-    let filter = { kinds: [1], limit: 10 };
-    subscription = ndk.subscribe(filter, {
+    const profileFilter = {kinds: [0], limit: 200 };
+    const subscribeFilter = { kinds: [1], limit: 10 };
+    const fetchFilter = { kinds: [1], limit: 10 };
+    subscription = ndk.subscribe([subscribeFilter, profileFilter], {
       closeOnEose: false,
     });
-    subscription.on("event", (event) => {
-      addMessage(event);
+    subscription.on("event", async (event) => {
+      if (event.kind === 1) {
+        addMessage(event);
+      }
     });
 
-    const initialEvents = await ndk.fetchEvents(filter);
-    messages = Array.from(initialEvents).sort(
-    (a, b) => b.created_at - a.created_at
-    );
+    const initialEvents = await ndk.fetchEvents([fetchFilter]);
+
+    for (const event of initialEvents) {
+      // if (event.kind === 1) {
+        await addMessage(event);
+      // }
+    }
   };
 
   onDestroy(() => {
@@ -127,13 +138,27 @@
     }
   });
 
-  function addMessage(event) {
-    const exists = messages.some((m) => m.id === event.id);
+  async function addMessage(event) {
+    const exists = messages.some(m => m.id === event.id);
     if (!exists) {
-      messages = [event, ...messages].sort(
-        (a, b) => b.created_at - a.created_at
-      );
+      messages = [{ ...event, author: null }, ...messages].sort((a, b) => b.created_at - a.created_at);
+      await fetchUserProfile(event.pubkey);
     }
+  }
+
+  async function fetchUserProfile(pubkey) {
+    if (userProfiles.has(pubkey)) return;    
+    const user = ndk.getUser({ pubkey: pubkey });
+    await user.fetchProfile();
+    const profile = user.profile;
+    userProfiles.set(pubkey, profile);
+    await updateMessagesWithProfile(pubkey, profile);
+  }
+
+  async function updateMessagesWithProfile(pubkey, profile) {
+    messages = messages.map(msg => 
+      msg.pubkey === pubkey ? { ...msg, author: profile } : msg
+    );
   }
 
   // time picker
@@ -247,14 +272,6 @@
     ndkEvent.publish();
   }
 
-  async function getEventOwnerName(ndkEvent) {
-    const authorPubKey = ndkEvent.pubkey;
-    const author = ndk.getUser({pubkey: authorPubKey});
-    const profile = author.fetchProfile();
-    console.log('profile: ', profile)
-    return await profile?.name;
-    // return getUserProfile(ndk, authorPubKey);
-  }
 </script>
 
 <main>
@@ -272,7 +289,7 @@
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
             <a href="/profile">
               <img
-                class="h-12 w-12 flex-none rounded-full bg-gray-50"
+                class="w-12 h-12 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-gray-100"
                 src={avatar}
                 alt="avatar"
                 on:click={() => goto('/profile')}
@@ -280,12 +297,12 @@
             </a>
           </p>
         </div>
-      {:else}
+      <!-- {:else}
         <div class="absolute top-0 right-0 h-16 w-16">
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
             <button on:click={() => (showModal = true)}>Login</button>
           </p>
-        </div>
+        </div> -->
       {/if}
       <!-- <Auth /> -->
       <!-- {#if $isAuthenticated}
@@ -385,7 +402,7 @@
           </div>
 
           <div>
-            {#if isMessageValid}
+            {#if isAuthenticated}
               <button
                 on:click={handleSubmit}
                 disabled={!isMessageValid}
@@ -394,34 +411,42 @@
               >
                 Submit
               </button>
-              <!-- {:else if loading }
-                  <p>Loading...</p> -->
+            {:else }
+              <button
+                on:click={() => showModal = true}
+                type="submit"
+                class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+              >
+              Start
+            </button>
             {/if}
           </div>
         </div>
         <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
           <ul role="list" class="divide-y divide-gray-100">
-            {#each messages as event}
+            {#each messages as message (message.id)}
               <li class="flex justify-between gap-x-6 py-5">
                 <div class="flex min-w-0 gap-x-4">
-                  <!-- <img class="h-12 w-12 flex-none rounded-full bg-gray-50" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt=""> -->
-                  <!-- <img class="h-12 w-12 flex-none rounded-full bg-gray-50" src="{getEventOwnerProfile(event).avatar}" alt=""> -->
+                  <img class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200" src="{message.author?.avatar}" alt="">
                   <div class="min-w-0 flex-auto">
                     <p class="text-sm font-semibold leading-6 text-white">
-                      {parseEventContent(event).parsedContent[0]}
-                        {parseEventContent(event).parsedContent[1]}
-                        {parseEventContent(event).parsedContent[2]}
-                        {parseEventContent(event).parsedContent[3]}
+                      {parseEventContent(message).parsedContent[0]}
+                        {parseEventContent(message).parsedContent[1]}
+                        {parseEventContent(message).parsedContent[2]}
+                        {parseEventContent(message).parsedContent[3]}
                     </p>
                     <p class="mt-1 truncate text-xs leading-5 text-gray-500">
-                      leslie.alexander@example.com
+                      {message.author?.name}
                     </p>
                   </div>
                 </div>
                 <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
                   <p class="text-sm leading-6 text-gray-200">
-                    {parseEventContent(event).parsedContent[4]} | {parseEventContent(event).parsedContent[5]} - {parseEventContent(event).parsedContent[6]}
+                    {parseEventContent(message).parsedContent[4]} @ {parseEventContent(message).parsedContent[5]} - {parseEventContent(message).parsedContent[6]}
                   </p>
+                  <small class="text-xs leading-6 text-gray-400">
+                    added {new Date(message.created_at * 1000).toLocaleTimeString()}
+                  </small>
                   <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
                 </div>
               </li>

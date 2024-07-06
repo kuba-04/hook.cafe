@@ -42,7 +42,7 @@
     try {
       const avatar = `${selectedAvatar}`;
       await setProfileData(ndk, name, avatar);
-      goto('/');
+      goto("/");
     } catch (error) {
       console.error("Error saving profile data:", error);
       alert("Failed to save profile data. Please try again.");
@@ -81,12 +81,12 @@
     >
   {/if}
   <header class="bg-gray-900">
-    <nav class="flex justify-between p-6 lg:px-8" aria-label="Global">
+    <nav class="flex p-6 justify-center" aria-label="Global">
       <div>
         <button
           on:click={() => goto("/")}
           type="button"
-          class="float-right text-gray-300 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+          class="text-gray-300 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-blue-300 dark:focus:ring-gray-800"
         >
           <svg
             fill="#000000"
@@ -112,12 +112,60 @@
             </g></svg
           >
         </button>
+        <button
+          on:click={save}
+          type="button"
+          class="text-gray-300 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-green-200 dark:focus:ring-gray-800"
+        >
+          <svg
+            height="20px"
+            width="20px"
+            viewBox="0 0 26.676 26.676"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            ><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g
+              id="SVGRepo_tracerCarrier"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></g><g id="SVGRepo_iconCarrier">
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M18.1716 1C18.702 1 19.2107 1.21071 19.5858 1.58579L22.4142 4.41421C22.7893 4.78929 23 5.29799 23 5.82843V20C23 21.6569 21.6569 23 20 23H4C2.34315 23 1 21.6569 1 20V4C1 2.34315 2.34315 1 4 1H18.1716ZM4 3C3.44772 3 3 3.44772 3 4V20C3 20.5523 3.44772 21 4 21L5 21L5 15C5 13.3431 6.34315 12 8 12L16 12C17.6569 12 19 13.3431 19 15V21H20C20.5523 21 21 20.5523 21 20V6.82843C21 6.29799 20.7893 5.78929 20.4142 5.41421L18.5858 3.58579C18.2107 3.21071 17.702 3 17.1716 3H17V5C17 6.65685 15.6569 8 14 8H10C8.34315 8 7 6.65685 7 5V3H4ZM17 21V15C17 14.4477 16.5523 14 16 14L8 14C7.44772 14 7 14.4477 7 15L7 21L17 21ZM9 3H15V5C15 5.55228 14.5523 6 14 6H10C9.44772 6 9 5.55228 9 5V3Z"
+                fill="#0F0F0F"
+              ></path>
+            </g></svg
+          >
+        </button>
+        <button
+          on:click={logout}
+          type="button"
+          class="text-gray-300 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-red-300 dark:focus:ring-gray-800"
+        >
+          <svg
+            height="20px"
+            width="20px"
+            viewBox="0 0 26.676 26.676"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            ><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g
+              id="SVGRepo_tracerCarrier"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></g><g id="SVGRepo_iconCarrier">
+              <path
+                d="M11.75 9.874C11.75 10.2882 12.0858 10.624 12.5 10.624C12.9142 10.624 13.25 10.2882 13.25 9.874H11.75ZM13.25 4C13.25 3.58579 12.9142 3.25 12.5 3.25C12.0858 3.25 11.75 3.58579 11.75 4H13.25ZM9.81082 6.66156C10.1878 6.48991 10.3542 6.04515 10.1826 5.66818C10.0109 5.29121 9.56615 5.12478 9.18918 5.29644L9.81082 6.66156ZM5.5 12.16L4.7499 12.1561L4.75005 12.1687L5.5 12.16ZM12.5 19L12.5086 18.25C12.5029 18.25 12.4971 18.25 12.4914 18.25L12.5 19ZM19.5 12.16L20.2501 12.1687L20.25 12.1561L19.5 12.16ZM15.8108 5.29644C15.4338 5.12478 14.9891 5.29121 14.8174 5.66818C14.6458 6.04515 14.8122 6.48991 15.1892 6.66156L15.8108 5.29644ZM13.25 9.874V4H11.75V9.874H13.25ZM9.18918 5.29644C6.49843 6.52171 4.7655 9.19951 4.75001 12.1561L6.24999 12.1639C6.26242 9.79237 7.65246 7.6444 9.81082 6.66156L9.18918 5.29644ZM4.75005 12.1687C4.79935 16.4046 8.27278 19.7986 12.5086 19.75L12.4914 18.25C9.08384 18.2892 6.28961 15.5588 6.24995 12.1513L4.75005 12.1687ZM12.4914 19.75C16.7272 19.7986 20.2007 16.4046 20.2499 12.1687L18.7501 12.1513C18.7104 15.5588 15.9162 18.2892 12.5086 18.25L12.4914 19.75ZM20.25 12.1561C20.2345 9.19951 18.5016 6.52171 15.8108 5.29644L15.1892 6.66156C17.3475 7.6444 18.7376 9.79237 18.75 12.1639L20.25 12.1561Z"
+                fill="#000000"
+              ></path>
+            </g></svg
+          >
+        </button>
       </div>
-      <div class="absolute top-0 right-0 h-16 w-16">
+      <!-- <div class="absolute top-0 right-0 h-16 w-16">
         <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
           <button on:click={logout}>Logout</button>
         </p>
-      </div>
+      </div> -->
     </nav>
   </header>
 
@@ -145,7 +193,7 @@
               name="text"
               type="text"
               required
-              class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-2 sm:mt-0 bg-gray-900"
+              class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-1 sm:mt-0 bg-gray-900 dark:hover:bg-gray-600"
               placeholder="Name"
             />
           </div>
@@ -174,13 +222,14 @@
               <p
                 class="mt-1 text-xs leading-6 text-gray-400 sm:col-span-2 sm:mt-0"
               >
-                Your password (but cannot be changed!) we recommend you saving it
-                in a password manager or keeping secure (you can't log in without your key!)
+                Your password (but cannot be changed!) we recommend you saving
+                it in a password manager or keeping secure (you can't log in
+                without your key!)
               </p>
               <p
                 class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-2 sm:mt-0 break-words"
               >
-              <PasswordDisplay password={privKey} />
+                <PasswordDisplay password={privKey} />
                 <!-- {privKey} -->
               </p>
             </dd>
@@ -190,7 +239,7 @@
             <dd>
               <button>
                 <img
-                  class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500"
+                  class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-gray-100"
                   src={avatar}
                   alt="avatar"
                   on:click={showAvatars}
@@ -198,11 +247,11 @@
               </button>
             </dd>
           </div>
-          <button
+          <!-- <button
             on:click={save}
             class="text-gray-900 bg-gradient-to-r from-teal-200 to-lime-200 hover:bg-gradient-to-l hover:from-teal-200 hover:to-lime-200 focus:ring-4 focus:outline-none focus:ring-lime-200 dark:focus:ring-teal-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
             >Save
-          </button>
+          </button> -->
         </dl>
       </div>
     </div>

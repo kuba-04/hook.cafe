@@ -27,9 +27,9 @@
     class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-2 sm:mt-0 bg-gray-900"
   />
   <button on:click={togglePasswordVisibility} class="toggle-visibility">
-    {showPassword ? "👁️" : "👁️‍🗨️"}
+    {showPassword ? "🫣" : "👀"}
   </button>
-  <button on:click={copyPassword} class="copy-button"> 📋 </button>
+  <button on:click={copyPassword} class="copy-button"> 📎 </button>
   {#if showAlert}
   <div class="max-h-4  text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400" role="alert">
     <span class="font-medium">Copied!</span>
