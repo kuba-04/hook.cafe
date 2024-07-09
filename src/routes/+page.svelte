@@ -80,21 +80,15 @@
   }
 
   onMount(async () => {
-    const storedUser = localStorage.getItem("user");
-    let decrypted;
-    if (storedUser) {
-      decrypted = decryptKey(localStorage.getItem("secure"));
-    }
-
-    if (storedUser && decrypted) {
-      name = storedUser;
-      privKey = decrypted;
+    privKey = decryptKey(localStorage.getItem("secure"));
+    if (privKey) {
+      signer = recreateSigner(privKey);
+      // name = signer.user.name;
+      // console.log(name)
       isAuthenticated = true;
     } else {
       return;
     }
-
-    signer = recreateSigner(privKey);
 
     ndk = new NDK({
       explicitRelayUrls: [RELAY_URL],
@@ -106,6 +100,7 @@
     const pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     avatar = profile.avatar || "";
+
 
     await initMessages();
   });
