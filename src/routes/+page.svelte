@@ -6,6 +6,7 @@
 
   import { RELAY_URL } from "../lib/Env";
   import NDK, { NDKEvent } from "@nostr-dev-kit/ndk";
+  import { nip19 } from 'nostr-tools';
   import {
     decryptKey,
     encryptKey,
@@ -28,8 +29,11 @@
   let subscription;
   let messages = [];
   let userProfiles = new Map();
+  let submitted = null;
+  let selectedAuthor = "";
 
   async function handleRegister(event) {
+    submitted = localStorage.getItem('myEvent'); // todo: fetch from relay
     name = event.detail.name;
     avatar = event.detail.avatar;
     showModal = false;
@@ -80,11 +84,11 @@
   }
 
   onMount(async () => {
-    privKey = decryptKey(localStorage.getItem("secure"));
-    if (privKey) {
+    const storedKey = localStorage.getItem("secure");
+    selectedAuthor = localStorage.getItem('selected') || "";
+    if (storedKey !== null) {
+      privKey = decryptKey(storedKey);
       signer = recreateSigner(privKey);
-      // name = signer.user.name;
-      // console.log(name)
       isAuthenticated = true;
     } else {
       return;
@@ -102,8 +106,21 @@
     avatar = profile.avatar || "";
 
 
-    await initMessages();
+    // TODO: this condition isn't enough, what if he logs in and already selected sth?
+    if (selectedAuthor.length > 0) {
+      await initConnectedMessages();
+    } else {
+      await initMessages();
+    }
   });
+
+  function isRootNote(event) {
+    return event.kind === 1 && !event.tags.some(tag => tag[0] === 'e');
+  }
+
+  function isReplyNote(event) {
+    return event.kind === 1 && event.tags.some(tag => tag[0] === 'e');
+  }
 
   async function initMessages() {
     const profileFilter = {kinds: [0], limit: 200 };
@@ -113,7 +130,7 @@
       closeOnEose: false,
     });
     subscription.on("event", async (event) => {
-      if (event.kind === 1) {
+      if (isRootNote(event)) {
         addMessage(event);
       }
     });
@@ -121,9 +138,52 @@
     const initialEvents = await ndk.fetchEvents([fetchFilter]);
 
     for (const event of initialEvents) {
-      // if (event.kind === 1) {
+      if (isRootNote(event)) {
         await addMessage(event);
-      // }
+      }
+    }
+  };
+
+  async function initConnectedMessages() {
+    const profileFilter = {kinds: [0], limit: 200 };
+    // 1. selected
+    const fetchSelectedFilter = { kinds: [1], authors: [selectedAuthor] };
+    const selectedNote = await ndk.fetchEvent(fetchSelectedFilter);
+
+    // 2. replies to selected
+    // const selectedEventPubkey = selectedEvent?.pubkey || '';
+    const fetchRepliesFilter = { kinds: [1] };
+
+    let replyNotes = [];
+    const replies = await ndk.fetchEvents(fetchRepliesFilter);
+    for (const note of replies) {
+      if (note.getMatchingTags('e', selectedAuthor) !== null) {
+          replyNotes.push(note)
+        }
+    }
+    
+    // 3. replies to mine 
+    const currentUserKey = (await signer.user()).pubkey;
+    const ownNoteFilter = { kinds: [1], authors: [currentUserKey] };
+    const myNote = await ndk.fetchEvent(ownNoteFilter);
+    
+
+    subscription = ndk.subscribe([fetchRepliesFilter, profileFilter], {
+      closeOnEose: false,
+    });
+    subscription.on("event", async (event) => {
+      if (isReplyNote(event)) {
+        await addMessage(event);
+      }
+    });
+    
+    const allNotes = new Set([selectedNote, myNote, ...replyNotes]);
+    
+    for (const event of allNotes) {
+      addMessage(selectedNote);
+      if (isReplyNote(event)) {
+        addMessage(event);
+      }
     }
   };
 
@@ -153,6 +213,32 @@
   async function updateMessagesWithProfile(pubkey, profile) {
     messages = messages.map(msg => 
       msg.pubkey === pubkey ? { ...msg, author: profile } : msg
+    );
+  }
+
+  async function select(event) {
+    const eventAuthorKey = event.pubkey;
+    const currentUserKey = (await signer.user()).pubkey;
+    if (eventAuthorKey === currentUserKey) {
+      console.log("You can't select yourself!");
+      return;
+    }
+    selectedAuthor = eventAuthorKey;
+    localStorage.setItem('selected', eventAuthorKey);
+    const ownNoteFilter = { kinds: [1], authors: [currentUserKey] };
+    const ownEvent = await ndk.fetchEvent(ownNoteFilter);
+    const replyEvent = new NDKEvent(ndk);
+    replyEvent.kind = 1;
+    replyEvent.tags = [
+        ['e', event.id],
+        ['p', event.pubkey]
+      ];
+    replyEvent.content = ownEvent?.content || '';
+    replyEvent.publish().then(() => {
+      subscription.stop();
+      messages = [];
+      initConnectedMessages()
+    }
     );
   }
 
@@ -246,13 +332,21 @@
   }
 
   async function handleSubmit() {
+    const currentUserKey = (await signer.user()).pubkey;
+    const alreadyAdded = messages.map(e => e.pubkey).includes(currentUserKey);
+    if (alreadyAdded) {
+      alert("You can add only one request per day!");
+      return;
+    }
+
     let loading = true;
     fieldsArray[7] = minValue.toString();
     fieldsArray[8] = maxValue.toString();
     message = fieldsArray.join("|");
 
     try {
-      sendMessage(message);
+      submitted = await sendMessage(message);
+      localStorage.setItem('myEvent', submitted);
     } catch (error) {
       console.log(error);
     } finally {
@@ -265,6 +359,7 @@
     ndkEvent.kind = 1;
     ndkEvent.content = message;
     ndkEvent.publish();
+    return ndkEvent;
   }
 
 </script>
@@ -306,6 +401,9 @@
       <div
         class="mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2"
       >
+        <!-- form -->
+        <!-- {#if submitted !== null} -->
+        {#if true}
         <div class="max-w-xl lg:max-w-lg">
           <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             What do you want to talk about today?
@@ -417,10 +515,14 @@
             {/if}
           </div>
         </div>
+        {/if}
+        <!-- end form -->
+
+        <!-- list -->
         <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
           <ul role="list" class="divide-y divide-gray-100">
             {#each messages as message (message.id)}
-              <li class="flex justify-between gap-x-6 py-5">
+              <li on:click={select(message)} class="flex justify-between gap-x-6 py-5 hover:bg-gray-600">
                 <div class="flex min-w-0 gap-x-4">
                   <img class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200" src="{message.author?.avatar}" alt="">
                   <div class="min-w-0 flex-auto">
@@ -448,6 +550,7 @@
             {/each}
           </ul>
         </dl>
+        <!-- end list -->
       </div>
     </div>
     <div
