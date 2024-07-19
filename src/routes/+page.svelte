@@ -6,7 +6,6 @@
 
   import { RELAY_URL } from "../lib/Env";
   import NDK, { NDKEvent } from "@nostr-dev-kit/ndk";
-  import { nip19 } from 'nostr-tools';
   import {
     decryptKey,
     encryptKey,
@@ -33,7 +32,6 @@
   let selectedAuthor = "";
 
   async function handleRegister(event) {
-    submitted = localStorage.getItem('myEvent'); // todo: fetch from relay
     name = event.detail.name;
     avatar = event.detail.avatar;
     showModal = false;
@@ -80,12 +78,31 @@
     name = profile.name || '';
     avatar = profile.avatar || '';
 
-    await initMessages();
+    await loadOwnEvents();
+    if (selectedAuthor.length > 0) {
+      await initConnectedMessages();
+    } else {
+      await initMessages();
+    }
+  }
+
+  async function loadOwnEvents() {
+    const currentUserKey = (await signer.user()).pubkey;
+    const fetchSelectedFilter = { kinds: [1], authors: [currentUserKey] };
+    const submittedEvents = await ndk.fetchEvents(fetchSelectedFilter);
+    submittedEvents.forEach(e => {
+      if (isRootNote(e)) {
+        submitted = e;
+        localStorage.setItem('myEvent', e);
+      } else if (isReplyNote(e)) {
+        selectedAuthor = e.tagValue('p') || '';
+        localStorage.setItem('selected', selectedAuthor);
+      }
+    });
   }
 
   onMount(async () => {
     const storedKey = localStorage.getItem("secure");
-    selectedAuthor = localStorage.getItem('selected') || "";
     if (storedKey !== null) {
       privKey = decryptKey(storedKey);
       signer = recreateSigner(privKey);
@@ -93,20 +110,20 @@
     } else {
       return;
     }
-
+    selectedAuthor = localStorage.getItem('selected') || "";
+    
     ndk = new NDK({
       explicitRelayUrls: [RELAY_URL],
       signer: signer,
     });
-
+    
     await ndk.connect();
+    await loadOwnEvents();
 
     const pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     avatar = profile.avatar || "";
 
-
-    // TODO: this condition isn't enough, what if he logs in and already selected sth?
     if (selectedAuthor.length > 0) {
       await initConnectedMessages();
     } else {
@@ -148,27 +165,36 @@
     const profileFilter = {kinds: [0], limit: 200 };
     // 1. selected
     const fetchSelectedFilter = { kinds: [1], authors: [selectedAuthor] };
-    const selectedNote = await ndk.fetchEvent(fetchSelectedFilter);
+    const selectedAuthorNotes = await ndk.fetchEvents(fetchSelectedFilter);
+    let selectedNote;
+    selectedAuthorNotes.forEach(e => {
+      if (isRootNote(e)) {
+        selectedNote = e;
+        localStorage.setItem('myEvent', e);
+      } 
+    });
 
     // 2. replies to selected
-    // const selectedEventPubkey = selectedEvent?.pubkey || '';
-    const fetchRepliesFilter = { kinds: [1] };
-
-    let replyNotes = [];
-    const replies = await ndk.fetchEvents(fetchRepliesFilter);
-    for (const note of replies) {
+    const generalFilter = { kinds: [1] };
+    let selectedReplyNotes = [];
+    const repliesToSelected = await ndk.fetchEvents(generalFilter);
+    for (const note of repliesToSelected) {
       if (note.getMatchingTags('e', selectedAuthor) !== null) {
-          replyNotes.push(note)
+        selectedReplyNotes.push(note)
         }
     }
     
     // 3. replies to mine 
     const currentUserKey = (await signer.user()).pubkey;
-    const ownNoteFilter = { kinds: [1], authors: [currentUserKey] };
-    const myNote = await ndk.fetchEvent(ownNoteFilter);
-    
+    let toMineReplyNotes = [];
+    const repliesToMine = await ndk.fetchEvents(generalFilter);
+    for (const note of repliesToMine) {
+      if (note.getMatchingTags('e', currentUserKey) !== null) {
+        toMineReplyNotes.push(note)
+      }
+    }
 
-    subscription = ndk.subscribe([fetchRepliesFilter, profileFilter], {
+    subscription = ndk.subscribe([generalFilter,  profileFilter], {
       closeOnEose: false,
     });
     subscription.on("event", async (event) => {
@@ -177,12 +203,13 @@
       }
     });
     
-    const allNotes = new Set([selectedNote, myNote, ...replyNotes]);
+    const allNotes = new Set([selectedNote,  ...selectedReplyNotes, ...toMineReplyNotes]);
     
     for (const event of allNotes) {
       addMessage(selectedNote);
       if (isReplyNote(event)) {
         addMessage(event);
+        
       }
     }
   };
