@@ -163,16 +163,18 @@
 
   async function initConnectedMessages() {
     const profileFilter = {kinds: [0], limit: 200 };
-    // 1. selected
-    const fetchSelectedFilter = { kinds: [1], authors: [selectedAuthor] };
-    const selectedAuthorNotes = await ndk.fetchEvents(fetchSelectedFilter);
+  
+    // 1. selected and its parent
     let selectedNote;
-    selectedAuthorNotes.forEach(e => {
+    let selectedParentNote;
+    const fetchSelectedFilter = { kinds: [1], authors: [selectedAuthor] };
+    await ndk.fetchEvents(fetchSelectedFilter).then(
+      notes => notes.forEach(e => {
       if (isRootNote(e)) {
         selectedNote = e;
         localStorage.setItem('myEvent', e);
-      } 
-    });
+      }
+    }));
 
     // 2. replies to selected
     const generalFilter = { kinds: [1] };
@@ -184,6 +186,7 @@
         }
     }
     
+    // TODO check this out
     // 3. replies to mine 
     const currentUserKey = (await signer.user()).pubkey;
     let toMineReplyNotes = [];
@@ -199,17 +202,25 @@
     });
     subscription.on("event", async (event) => {
       if (isReplyNote(event)) {
-        await addMessage(event);
+        // all root events for each selection/reply
+        const selectedParentKey = event.tagValue('p') || '';
+        ndk.fetchEvents({ kinds: [1], authors: [selectedParentKey] })
+        .then(p => p.forEach(note => {
+          if (isRootNote(note)) {
+              addMessage(note);
+            }
+          })
+        )
       }
     });
     
-    const allNotes = new Set([selectedNote,  ...selectedReplyNotes, ...toMineReplyNotes]);
+    const allNotes = new Set([...selectedReplyNotes, ...toMineReplyNotes]);
     
     for (const event of allNotes) {
       addMessage(selectedNote);
+      addMessage(selectedParentNote);
       if (isReplyNote(event)) {
         addMessage(event);
-        
       }
     }
   };
@@ -221,8 +232,9 @@
   });
 
   async function addMessage(event) {
-    const exists = messages.some(m => m.id === event.id);
-    if (!exists) {
+    const idExists = messages.some(m => m.id === event.id);
+    const pubkeyExists = messages.some(m => m.pubkey === event.pubkey);
+    if (!idExists && !pubkeyExists) {
       messages = [{ ...event, author: null }, ...messages].sort((a, b) => b.created_at - a.created_at);
       await fetchUserProfile(event.pubkey);
     }
@@ -262,10 +274,11 @@
       ];
     replyEvent.content = ownEvent?.content || '';
     replyEvent.publish().then(() => {
-      subscription.stop();
+      // subscription.stop();
       messages = [];
-      initConnectedMessages()
-    }
+      userProfiles.clear();
+      initConnectedMessages();
+      }
     );
   }
 
