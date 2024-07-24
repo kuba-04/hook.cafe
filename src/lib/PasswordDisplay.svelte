@@ -29,11 +29,13 @@
   <button on:click={togglePasswordVisibility} class="toggle-visibility">
     {showPassword ? "🫣" : "👀"}
   </button>
-  <button on:click={copyPassword} class="copy-button"> 📎 </button>
+  {#if !showAlert}
+    <button on:click={copyPassword} class="copy-button"> copy </button>
+  {/if}
   {#if showAlert}
-  <div class="max-h-4  text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400" role="alert">
-    <span class="font-medium">Copied!</span>
-  </div>
+    <div class="max-h-4  text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400" role="alert">
+      <button class="font-medium">copied!</button>
+    </div>
   {/if}
 </div>
 
