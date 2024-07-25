@@ -130,6 +130,8 @@
     const pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     avatar = profile.avatar || "";
+    name = profile.name || "";
+    city = profile.city || null;
 
     if (selectedAuthor.length > 0) {
       await initConnectedMessages();
@@ -252,10 +254,10 @@
     await user.fetchProfile();
     const profile = user.profile;
     userProfiles.set(pubkey, profile);
-    await updateMessagesWithProfile(pubkey, profile);
+    await validateMessagesWithProfile(pubkey, profile);
   }
 
-  async function updateMessagesWithProfile(pubkey, profile) {
+  async function validateMessagesWithProfile(pubkey, profile) {
     messages = messages.map(msg => 
       msg.pubkey === pubkey ? { ...msg, author: profile } : msg
     );
@@ -286,7 +288,7 @@
         ['e', event.id],
         ['p', event.pubkey]
       ];
-    replyEvent.content = ownEvent?.content || '';
+    replyEvent.content = JSON.stringify(ownEvent?.content || '');
     replyEvent.publish().then(() => {
       messages = [];
       userProfiles.clear();
@@ -295,29 +297,26 @@
     );
   }
 
-  // time picker
-  import TimeRangePicker from "../lib/TimeRangePicker.svelte";
-  let time_from = "12:00";
-  let time_to = "13:00";
+  // function parseEventContent(event) {
+  //   return {
+  //     ...event,
+  //     parsedContent: event.content.split("|"),
+  //   };
+  // }
 
-  function handleTimeRangeChange(event) {
-    time_from = event.detail.startTime;
-    time_to = event.detail.endTime;
-    fieldsArray[5] = time_from;
-    fieldsArray[6] = time_to;
-  }
-
+  
+  // TODO why is it calling so many times??
   function parseEventContent(event) {
     return {
       ...event,
-      parsedContent: event.content.split("|"),
+      parsedContent: JSON.parse(event.content),
     };
   }
+  // import NostriChat from "$lib/NostriChat.svelte";
 
   // price slider
   import Slider from "../lib/Slider.svelte";
   import { goto } from "$app/navigation";
-  import NostriChat from "$lib/NostriChat.svelte";
   let minValue;
   let maxValue;
 
@@ -331,52 +330,44 @@
    * @type {boolean}
    */
   let isMessageValid;
-  /**
-   * @type {any[]}
-   */
-  let fieldsArray = [
-    "",
-    "",
-    "",
-    "",
-    inputLocation,
-    time_from,
-    time_to,
-    minValue,
-    maxValue,
-  ];
-  /**
-   * @type {String}
-   */
-  let message = fieldsArray.join("|");
+  let message = {};
 
   function onChangeWord1() {
-    fieldsArray[0] = inputWord1;
-    updateMessage();
+    message.word1 = inputWord1;
+    validateMessage();
   }
 
   function onChangeWord2() {
-    fieldsArray[1] = inputWord2;
-    updateMessage();
+    message.word2 = inputWord2;
+    validateMessage();
   }
 
   function onChangeWord3() {
-    fieldsArray[2] = inputWord3;
-    updateMessage();
+    message.word3 = inputWord3;
+    validateMessage();
   }
 
   function onChangeWord4() {
-    fieldsArray[3] = inputWord4;
-    updateMessage();
+    message.word4 = inputWord4;
+    validateMessage();
   }
 
   function onChangeLocation() {
-    fieldsArray[4] = inputLocation;
-    updateMessage();
+    message.location = inputLocation;
+    validateMessage();
   }
 
-  function updateMessage() {
-    message = fieldsArray.join("|");
+  // time picker
+  import TimeRangePicker from "../lib/TimeRangePicker.svelte";
+  let timeFrom = "12:00";
+  let timeTo = "13:00";
+
+  function handleTimeRangeChange(event) {
+    timeFrom = event.detail.startTime;
+    timeTo = event.detail.endTime;
+  }
+
+  function validateMessage() {
     isMessageValid =
       inputWord1.trim().length > 0 &&
       inputWord2.trim().length > 0 &&
@@ -394,9 +385,11 @@
     }
     
     let loading = true;
-    fieldsArray[7] = minValue.toString();
-    fieldsArray[8] = maxValue.toString();
-    message = fieldsArray.join("|");
+    message.minPrice = minValue.toString();
+    message.maxPrice = maxValue.toString();
+    message.timeFrom = timeFrom;
+    message.timeTo = timeTo;
+    message.city = city;
 
     if (!isMessageValid) {
       showAlertOnSubmittingInvalid = true;
@@ -415,9 +408,12 @@
   }
 
   async function sendMessage(message) {
+
+    console.log('sending: ', message)
+    console.log('message stringify: ', JSON.stringify(message))
     const ndkEvent = new NDKEvent(ndk);
     ndkEvent.kind = 1;
-    ndkEvent.content = message;
+    ndkEvent.content = JSON.stringify(message);
     ndkEvent.publish();
     return ndkEvent;
   }
@@ -427,7 +423,8 @@
 
 <main>
   <div>
-    <NostriChat></NostriChat>
+    <!-- todo -->
+    <!-- <NostriChat></NostriChat> -->
   </div>
   {#if showModal}
     <Modal bind:showModal>
@@ -541,8 +538,8 @@
               class="min-w-0 flex-direction rounded-md border-0 bg-white/5 px-3.5 py-2 text-black shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
             >
               <TimeRangePicker
-                bind:startTime={time_from}
-                bind:endTime={time_to}
+                bind:startTime={timeFrom}
+                bind:endTime={timeTo}
                 on:change={handleTimeRangeChange}
               />
             </span>
@@ -609,10 +606,10 @@
                   <img class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200" src="{message.author?.avatar}" alt="">
                   <div class="min-w-0 flex-auto">
                     <p class="text-sm font-semibold leading-6 text-white">
-                      {parseEventContent(message).parsedContent[0]}
-                        {parseEventContent(message).parsedContent[1]}
-                        {parseEventContent(message).parsedContent[2]}
-                        {parseEventContent(message).parsedContent[3]}
+                      {parseEventContent(message).parsedContent.word1}
+                        {parseEventContent(message).parsedContent.word2}
+                        {parseEventContent(message).parsedContent.word3}
+                        {parseEventContent(message).parsedContent.word4}
                     </p>
                     <p class="mt-1 truncate text-xs leading-5 text-gray-500">
                       {message.author?.name}
@@ -621,10 +618,10 @@
                 </div>
                 <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
                   <p class="text-sm leading-6 text-gray-200">
-                    {parseEventContent(message).parsedContent[4]} @ {parseEventContent(message).parsedContent[5]} - {parseEventContent(message).parsedContent[6]}
+                    {parseEventContent(message).parsedContent.location} @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(message).parsedContent.timeTo}
                   </p>
                   <small class="text-xs leading-6 text-gray-400">
-                    added {new Date(message.created_at * 1000).toLocaleTimeString()}
+                    added {new Date(new Date() - new Date(message.created_at * 1000)).toLocaleTimeString([], {timeStyle: "short"}) } ago
                   </small>
                   <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
                 </div>
