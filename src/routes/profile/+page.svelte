@@ -245,30 +245,6 @@
               placeholder="Name"
             />
           </div>
-          <!-- <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-            <dt class="text-sm font-medium leading-6 text-gray-300">
-              City
-            </dt>
-            <input
-              id="city"
-              name="text"
-              type="text"
-              required
-              class="block w-full rounded-md border-0 py-1.5 pl-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
-              placeholder="City"
-              bind:value={query} 
-              on:input={handleInputCity} 
-            />
-            {#if results.length > 0}
-                <div class="autocomplete-results">
-                  {#each results as city}
-                    <div class="cursor-pointer text-sm font-medium leading-6 text-gray-300" on:click={() => selectCity(city)}>
-                      {city.name}, {city.country}
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-          </div> -->
           <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt class="text-sm font-medium leading-6 text-gray-300">
               City
@@ -357,19 +333,3 @@
     </div>
   </div>
 </main>
-
-<!-- <style>
-  .autocomplete-results {
-    position: relative;
-    border: 1px solid #ccc;
-    max-height: 150px;
-    overflow-y: auto;
-  }
-  .autocomplete-item {
-    padding: 8px;
-    cursor: pointer;
-  }
-  .autocomplete-item:hover {
-    background-color: #f0f0f0;
-  }
-</style> -->

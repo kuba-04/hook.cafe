@@ -24,8 +24,7 @@
 
   const onUpdateName = () => {
     name = name;
-    console.log('name ', name);
-    isNameValid = name.length >= 4;
+        isNameValid = name.length >= 4;
   };
 
   const handleRegister = async () => {
@@ -245,12 +244,5 @@
     border: 1px solid #ccc;
     max-height: 150px;
     overflow-y: auto;
-  }
-  .autocomplete-item {
-    padding: 8px;
-    cursor: pointer;
-  }
-  .autocomplete-item:hover {
-    background-color: #f0f0f0;
   }
 </style>
