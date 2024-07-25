@@ -32,6 +32,7 @@ export const register = async () => {
     return signer;
 };
 
+// @Deprecated
 export const setName = async (ndk) => {
     const name = localStorage.getItem('user');
     const metadataEvent = new NDKEvent(ndk);
@@ -45,11 +46,12 @@ export const setName = async (ndk) => {
 }
 
 
-export const setProfileData = async (ndk, name, avatar) => {
+export const setProfileData = async (ndk, name, city, avatar) => {
     const metadataEvent = new NDKEvent(ndk);
     metadataEvent.kind = 0;
     const content = JSON.stringify({
       name: name,
+      city: city,
       avatar: avatar,
     });
     metadataEvent.content = content;
@@ -57,6 +59,7 @@ export const setProfileData = async (ndk, name, avatar) => {
     await metadataEvent.publish();
 }
 
+//@Deprecated
 export const getUserProfileName = async (ndk, pubKey) => {
     const user = ndk.getUser({
       npub: pubKey,
@@ -88,6 +91,6 @@ export function getUserProfilePubKey(ndk, pubkey) {
       });
 
     user.fetchProfile();
-    console.log('user.profile ', user.profile)
+    // console.log('user.profile ', user.profile)
     return user.profile;
 }

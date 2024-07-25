@@ -1,12 +1,18 @@
 <script>
   import { recreateSigner, register } from './authUtils';
   import { createEventDispatcher } from 'svelte';
-  import { avatars, getRandomAvatar } from './avatars';
+  import { getRandomAvatar } from './avatars';
+  import citiesData from './cities.json';
 
   export let name = "";
   export let privKey = "";
 
+  let query = '';
+  let results = [];
+  let city = null;
+
   const dispatch = createEventDispatcher();
+  const dispatchCitySelection = createEventDispatcher();
   
   let hasAccount = false;
   let loading = false;
@@ -18,6 +24,7 @@
 
   const onUpdateName = () => {
     name = name;
+    console.log('name ', name);
     isNameValid = name.length >= 4;
   };
 
@@ -26,7 +33,7 @@
     try {
       register();
       let avatar = getRandomAvatar() 
-      dispatchRegisteredEvent({name, avatar});
+      dispatchRegisteredEvent({name, avatar, city});
       localStorage.setItem('user', name );
     } catch (error) {
       if (error instanceof Error) {
@@ -59,13 +66,35 @@
     dispatch('login', { privKey });
   }
 
-  function dispatchRegisteredEvent({name, avatar}) {
-    dispatch('register', { name, avatar });
+  function dispatchRegisteredEvent({name, avatar, city}) {
+    dispatch('register', { name, avatar, city });
+  }
+
+  function searchCities(query) {
+    const normalizedQuery = query.toLowerCase().trim();
+    results = citiesData
+      .filter(city => city.name.toLowerCase().startsWith(normalizedQuery))
+      .sort((a, b) => b.population - a.population)
+      .slice(0, 10);
+  }
+
+  function handleInput(event) {
+    query = event.target.value;
+    city = null;
+    searchCities(query);
+    dispatchCitySelection('change', { city });
+  }
+
+  function selectCity(c) {
+    city = { "cityName": c.name, "cityCountry": c.country };
+    query = `${c.name}, ${c.country}`;
+    results = [];
+    dispatchCitySelection('change', { city });
   }
 
 </script>
 
-<div class="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
+  <div class=" justify-center px-8 py-12 w-66 h-96">
   {#if hasAccount}
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <h2
@@ -121,30 +150,47 @@
       </h2>
     </div>
 
-    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+    <div class="mt-10 sm:mx-auto  sm:max-w-sm">
       <form class="form-widget" on:submit|preventDefault="{handleRegister}">
         <div>
-          <label
-            for="email"
-            class="block text-sm font-medium leading-6 text-gray-900"
-            >Name/nickname</label
-          >
           <div class="mt-2">
             <input
               id="name"
-              class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
+              class="block w-full rounded-md border-0 py-1.5 pl-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
               type="text"
+              placeholder="name or nickname"
               required
               bind:value={name}
               on:change={onUpdateName}
             />
           </div>
+          <div>
+            <div class="mt-2">
+              <input
+                id="city"
+                class="block w-full rounded-md border-0 py-1.5 pl-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
+                type="text"
+                placeholder="city"
+                required
+                bind:value={query} 
+                on:input={handleInput} 
+              />
+              {#if results.length > 0}
+                <div class="autocomplete-results">
+                  {#each results as city}
+                    <div class="p-2 cursor-pointer hover:bg-gray-200" on:click={() => selectCity(city)}>
+                      {city.name}, {city.country}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
         </div>
         
 
         <div class="mt-2">
           <button
-            disabled={!isNameValid}
+            disabled={!isNameValid || !city}
             on:click={handleRegister}
             type="submit"
             class="flex w-full justify-center rounded-md bg-teal-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-teal-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600"
@@ -188,8 +234,23 @@
   {/if}
 </div>
 
-<style lang="postcss">
+<!-- <style lang="postcss">
   :global(html) {
     background-color: theme(colors.gray.100);
+  }
+</style> -->
+
+<style>
+  .autocomplete-results {
+    border: 1px solid #ccc;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  .autocomplete-item {
+    padding: 8px;
+    cursor: pointer;
+  }
+  .autocomplete-item:hover {
+    background-color: #f0f0f0;
   }
 </style>

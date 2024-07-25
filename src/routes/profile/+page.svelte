@@ -7,6 +7,7 @@
   import { goto } from "$app/navigation";
   import { avatars } from "$lib/avatars";
   import PasswordDisplay from "$lib/PasswordDisplay.svelte";
+  import citiesData from '../../lib/cities.json';
 
   let selectedAvatar = "";
   let ndk;
@@ -15,6 +16,11 @@
   let privKey = "";
   let avatar = "";
   let showModal = false;
+  let showAlertOnSave = false;
+  
+  let query = '';
+  let results = [];
+  let city = null;
 
   onMount(async () => {
     privKey = decryptKey(localStorage.getItem("secure"));
@@ -25,6 +31,8 @@
     pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     name = profile.name || "";
+    city = profile.city || null;
+    query = `${city.cityName}, ${city.cityCountry}`;
     avatar = profile.avatar || "";
   });
 
@@ -35,13 +43,19 @@
   }
 
   async function save() {
+    if (city === null || name.length === 0) {
+      console.log("cant save")
+      showAlertOnSave = true;
+      setTimeout(() => showAlertOnSave = false, 1500);
+      return;
+    }
     if (!selectedAvatar) {
       selectedAvatar = avatar;
     }
 
     try {
       const avatar = `${selectedAvatar}`;
-      await setProfileData(ndk, name, avatar);
+      await setProfileData(ndk, name, city, avatar);
       goto("/");
     } catch (error) {
       console.error("Error saving profile data:", error);
@@ -57,12 +71,34 @@
     localStorage.clear();
     goto("/");
   }
+
+  function searchCities(query) {
+    const normalizedQuery = query.toLowerCase().trim();
+    results = citiesData
+      .filter(city => city.name.toLowerCase().startsWith(normalizedQuery))
+      .sort((a, b) => b.population - a.population)
+      .slice(0, 10);
+  }
+
+  function handleInputCity(event) {
+    query = event.target.value;
+    city = null;
+    searchCities(query);
+    // dispatchCitySelection('change', { city });
+  }
+
+  function selectCity(c) {
+    city = { "cityName": c.name, "cityCountry": c.country };
+    query = `${c.name}, ${c.country}`;
+    results = [];
+    // dispatchCitySelection('change', { city });
+  }
+
 </script>
 
 <main>
   {#if showModal}
     <Modal bind:showModal>
-      <!-- <div class="grid grid-cols-2 md:grid-cols-3 gap-4"> -->
       <br />
       <br />
       <div class="grid gap-4">
@@ -166,6 +202,18 @@
           <button on:click={logout}>Logout</button>
         </p>
       </div> -->
+      <!-- alert -->
+    {#if showAlertOnSave}
+      <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
+        <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+        </svg>
+        <span class="sr-only">Info</span>
+        <span class="text-lg font-semibold leading-6 text-white">
+          Some fields are not filled!
+        </span>
+      </div>
+    {/if}
     </nav>
   </header>
 
@@ -196,6 +244,59 @@
               class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-1 sm:mt-0 bg-gray-900 dark:hover:bg-gray-600"
               placeholder="Name"
             />
+          </div>
+          <!-- <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+            <dt class="text-sm font-medium leading-6 text-gray-300">
+              City
+            </dt>
+            <input
+              id="city"
+              name="text"
+              type="text"
+              required
+              class="block w-full rounded-md border-0 py-1.5 pl-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
+              placeholder="City"
+              bind:value={query} 
+              on:input={handleInputCity} 
+            />
+            {#if results.length > 0}
+                <div class="autocomplete-results">
+                  {#each results as city}
+                    <div class="cursor-pointer text-sm font-medium leading-6 text-gray-300" on:click={() => selectCity(city)}>
+                      {city.name}, {city.country}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+          </div> -->
+          <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+            <dt class="text-sm font-medium leading-6 text-gray-300">
+              City
+            </dt>
+            <div class="relative">
+              <input
+                id="city"
+                name="text"
+                type="text"
+                required
+                class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-1 sm:mt-0 bg-gray-900 dark:hover:bg-gray-600"
+                placeholder="City"
+                bind:value={query} 
+                on:input={handleInputCity} 
+              />
+              {#if results.length > 0}
+                <div class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                  {#each results as city}
+                    <div 
+                      class="cursor-pointer select-none relative py-2 pl-3 pr-9 text-gray-900 hover:bg-teal-600 hover:text-white"
+                      on:click={() => selectCity(city)}
+                    >
+                      {city.name}, {city.country}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
           </div>
           <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt class="text-sm font-medium leading-6 text-gray-300">
@@ -256,3 +357,19 @@
     </div>
   </div>
 </main>
+
+<!-- <style>
+  .autocomplete-results {
+    position: relative;
+    border: 1px solid #ccc;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  .autocomplete-item {
+    padding: 8px;
+    cursor: pointer;
+  }
+  .autocomplete-item:hover {
+    background-color: #f0f0f0;
+  }
+</style> -->

@@ -22,6 +22,7 @@
   let isAuthenticated = false;
 
   let name = "";
+  let city = null;
   let avatar = "";
   let privKey = "";
   let signer;
@@ -36,6 +37,7 @@
 
   async function handleRegister(event) {
     name = event.detail.name;
+    city = event.detail.city;
     avatar = event.detail.avatar;
     showModal = false;
 
@@ -54,11 +56,12 @@
 
     await ndk.connect();
 
-    await setProfileData(ndk, name, avatar);
+    await setProfileData(ndk, name, city, avatar);
 
     const pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     name = profile.name || '';
+    city = profile.city || null;
     avatar = profile.avatar || '';
 
     await initMessages();
@@ -79,6 +82,7 @@
     const pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     name = profile.name || '';
+    city = profile.city || null;
     avatar = profile.avatar || '';
 
     await loadOwnEvents();
@@ -322,7 +326,7 @@
   let inputWord2 = "";
   let inputWord3 = "";
   let inputWord4 = "";
-  let inputCity = "";
+  let inputLocation = "";
   /**
    * @type {boolean}
    */
@@ -335,7 +339,7 @@
     "",
     "",
     "",
-    inputCity,
+    inputLocation,
     time_from,
     time_to,
     minValue,
@@ -366,8 +370,8 @@
     updateMessage();
   }
 
-  function onChangeCity() {
-    fieldsArray[4] = inputCity;
+  function onChangeLocation() {
+    fieldsArray[4] = inputLocation;
     updateMessage();
   }
 
@@ -378,7 +382,7 @@
       inputWord2.trim().length > 0 &&
       inputWord3.trim().length > 0 &&
       inputWord4.trim().length > 0 &&
-      inputCity.trim().length > 0;
+      inputLocation.trim().length > 0;
   }
 
   async function handleSubmit() {
@@ -515,13 +519,13 @@
             />
           </div>
           <p class="mt-4 text-lg leading-8 text-gray-300">Where you can meet?</p>
-          <!-- city -->
+          <!-- location -->
           <div class="mt-6 flex-direction max-w-md gap-x-4">
-            <label for="city" class="sr-only">City</label>
+            <label for="location" class="sr-only">Location</label>
             <input
-              bind:value={inputCity}
-              on:change={onChangeCity}
-              id="city"
+              bind:value={inputLocation}
+              on:change={onChangeLocation}
+              id="location"
               name="text"
               type="text"
               required
