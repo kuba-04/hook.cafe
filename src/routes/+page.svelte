@@ -297,14 +297,6 @@
     );
   }
 
-  // function parseEventContent(event) {
-  //   return {
-  //     ...event,
-  //     parsedContent: event.content.split("|"),
-  //   };
-  // }
-
-  
   // TODO why is it calling so many times??
   function parseEventContent(event) {
     return {
@@ -408,9 +400,6 @@
   }
 
   async function sendMessage(message) {
-
-    console.log('sending: ', message)
-    console.log('message stringify: ', JSON.stringify(message))
     const ndkEvent = new NDKEvent(ndk);
     ndkEvent.kind = 1;
     ndkEvent.content = JSON.stringify(message);
