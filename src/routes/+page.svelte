@@ -41,6 +41,7 @@
     avatar = event.detail.avatar;
     showModal = false;
 
+    // TODO we can take the key from dispatched event and use here
     privKey = decryptKey(localStorage.getItem("secure"));
 
     if (privKey) {
@@ -63,6 +64,11 @@
     name = profile.name || '';
     city = profile.city || null;
     avatar = profile.avatar || '';
+
+    // if stared adding request we will try to submit it after the registration
+    if (isMessageValid) {
+      await handleSubmit();
+    }
 
     await initMessages();
   }
@@ -144,30 +150,36 @@
     return event.kind === 1 && !event.tags.some(tag => tag[0] === 'e');
   }
 
+  // TODO: replace with eventIsReply
   function isReplyNote(event) {
     return event.kind === 1 && event.tags.some(tag => tag[0] === 'e');
   }
 
   async function initMessages() {
     const profileFilter = {kinds: [0] };
-    const subscribeFilter = { kinds: [1] };
     const fetchFilter = { kinds: [1] };
-    subscription = ndk.subscribe([subscribeFilter, profileFilter], {
+    subscription = ndk.subscribe([fetchFilter, profileFilter], {
       closeOnEose: false,
     });
     subscription.on("event", async (event) => {
-      if (isRootNote(event)) {
+      const eventCity = JSON.parse(event.content).city;
+      if (isRootNote(event) && isTheSameCity(city, eventCity)) {
         addMessage(event);
       }
     });
     ndk.fetchEvents([fetchFilter]).then(events => {
       for (const event of events) {
-        if (isRootNote(event)) {
+        const eventCity = JSON.parse(event.content).city;
+        if (isRootNote(event) && isTheSameCity(city, eventCity)) {
           addMessage(event);
         }
       }
     })
   };
+
+  function isTheSameCity(city1, city2) {
+    return city1.cityName === city2.cityName && city1.cityCountry === city2.cityCountry
+  }
 
   async function initConnectedMessages() {
     const profileFilter = {kinds: [0] };
@@ -411,19 +423,17 @@
 
 
 <main>
-  <div>
-    <!-- todo -->
-    <!-- <NostriChat></NostriChat> -->
-  </div>
+  <!-- <div>
+    todo
+    <NostriChat></NostriChat>
+  </div> -->
   {#if showModal}
     <Modal bind:showModal>
       <Login on:register={handleRegister} on:login={handleLogin} />
     </Modal>
   {/if}
-  <div
-    class="relative isolate overflow-hidden bg-gray-900 py-16 sm:py-24 lg:py-32"
-  >
-    <div class="mx-auto max-w-7xl px-6 lg:px-8">
+  <div class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">
+    <div class="w-full max-w-4xl py-16 sm:py-24 lg:py-32">
       {#if isAuthenticated}
         <div class="absolute top-0 right-0 h-16 w-16">
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
@@ -445,132 +455,134 @@
         </div> -->
       {/if}
       <div
-        class={submitted ? "mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-1" : "mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2"}
+        class={submitted || !isAuthenticated ? "mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-1" : "mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2"}
       >
 
         <!-- form -->
         {#if !submitted}
-        <div class="max-w-xl lg:max-w-lg">
-          <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            What do you want to talk about today?
-          </h2>
-          <p class="mt-4 text-lg leading-8 text-gray-300">Your 4 words:</p>
-          <div class="mt-6 flex max-w-md gap-x-4">
-            <label for="word-1" class="sr-only">Word 1</label>
-            <input
-              bind:value={inputWord1}
-              on:change={onChangeWord1}
-              id="word-1"
-              name="text"
-              type="text"
-              required
-              class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-              placeholder="Word 1"
-            />
-
-            <label for="word-2" class="sr-only">Word 2</label>
-            <input
-              bind:value={inputWord2}
-              on:change={onChangeWord2}
-              id="word-2"
-              name="text"
-              type="text"
-              required
-              class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-              placeholder="Word 2"
-            />
-
-            <label for="word-3" class="sr-only">Word 3</label>
-            <input
-              bind:value={inputWord3}
-              on:change={onChangeWord3}
-              id="word-3"
-              name="text"
-              type="text"
-              required
-              class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-              placeholder="Word 3"
-            />
-
-            <label for="word-4" class="sr-only">Word 4</label>
-            <input
-              bind:value={inputWord4}
-              on:change={onChangeWord4}
-              id="word-4"
-              name="text"
-              type="text"
-              required
-              class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-              placeholder="Word 4"
-            />
-          </div>
-          <p class="mt-4 text-lg leading-8 text-gray-300">Where you can meet?</p>
-          <!-- location -->
-          <div class="mt-6 flex-direction max-w-md gap-x-4">
-            <label for="location" class="sr-only">Location</label>
-            <input
-              bind:value={inputLocation}
-              on:change={onChangeLocation}
-              id="location"
-              name="text"
-              type="text"
-              required
-              class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-              placeholder="District or street"
-            />
-          </div>
-          <p class="mt-4 text-lg leading-8 text-gray-300">Your meal time:</p>
-          <!-- timepicker -->
-          <div class="mt-6 flex max-w-md gap-x-4">
-            <span
-              id="time-from"
-              class="min-w-0 flex-direction rounded-md border-0 bg-white/5 px-3.5 py-2 text-black shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-            >
-              <TimeRangePicker
-                bind:startTime={timeFrom}
-                bind:endTime={timeTo}
-                on:change={handleTimeRangeChange}
+        <div class="flex flex-col place-content-center" > 
+          <div class="max-w-xl lg:max-w-lg">
+            <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              What do you want to talk about today?
+            </h2>
+            <p class="mt-4 text-lg leading-8 text-gray-300">Your 4 words:</p>
+            <div class="mt-6 flex max-w-md gap-x-4">
+              <label for="word-1" class="sr-only">Word 1</label>
+              <input
+                bind:value={inputWord1}
+                on:change={onChangeWord1}
+                id="word-1"
+                name="text"
+                type="text"
+                required
+                class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                placeholder="Word 1"
               />
-            </span>
-          </div>
-          <p class="mt-4 text-lg leading-8 text-gray-300">Your meal budget:</p>
-          <div class="mt-6 flex max-w-md gap-x-4">
-            <span class="mt-4 text-lg leading-8 text-gray-300">{minValue}</span>
-            <Slider bind:minValue bind:maxValue />
-            <span class="mt-4 text-lg leading-8 text-gray-300">{maxValue}</span>
-          </div>
-
-          <!-- alert -->
-          {#if showAlertOnSubmittingInvalid}
-            <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
-              <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
-              </svg>
-              <span class="sr-only">Info</span>
-              <span class="text-lg font-semibold leading-6 text-white">
-                Please fill out all the fields!
+  
+              <label for="word-2" class="sr-only">Word 2</label>
+              <input
+                bind:value={inputWord2}
+                on:change={onChangeWord2}
+                id="word-2"
+                name="text"
+                type="text"
+                required
+                class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                placeholder="Word 2"
+              />
+  
+              <label for="word-3" class="sr-only">Word 3</label>
+              <input
+                bind:value={inputWord3}
+                on:change={onChangeWord3}
+                id="word-3"
+                name="text"
+                type="text"
+                required
+                class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                placeholder="Word 3"
+              />
+  
+              <label for="word-4" class="sr-only">Word 4</label>
+              <input
+                bind:value={inputWord4}
+                on:change={onChangeWord4}
+                id="word-4"
+                name="text"
+                type="text"
+                required
+                class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                placeholder="Word 4"
+              />
+            </div>
+            <p class="mt-4 text-lg leading-8 text-gray-300">Where you can meet?</p>
+            <!-- location -->
+            <div class="mt-6 flex-direction max-w-md gap-x-4">
+              <label for="location" class="sr-only">Location</label>
+              <input
+                bind:value={inputLocation}
+                on:change={onChangeLocation}
+                id="location"
+                name="text"
+                type="text"
+                required
+                class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                placeholder="District or street"
+              />
+            </div>
+            <p class="mt-4 text-lg leading-8 text-gray-300">Your meal time:</p>
+            <!-- timepicker -->
+            <div class="mt-6 flex max-w-md gap-x-4">
+              <span
+                id="time-from"
+                class="min-w-0 flex-direction rounded-md border-0 bg-white/5 px-3.5 py-2 text-black shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+              >
+                <TimeRangePicker
+                  bind:startTime={timeFrom}
+                  bind:endTime={timeTo}
+                  on:change={handleTimeRangeChange}
+                />
               </span>
             </div>
-          {/if}
-
-          <div>
-            {#if isAuthenticated}
-              <button
-                on:click={handleSubmit}
-                type="submit"
-                class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
-              >
-                Submit
-              </button>
-            {:else }
-              <button
-                on:click={() => showModal = true}
-                type="submit"
-                class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
-              >
-              Start
-            </button>
+            <p class="mt-4 text-lg leading-8 text-gray-300">Your meal budget:</p>
+            <div class="mt-6 flex max-w-md gap-x-4">
+              <span class="mt-4 text-lg leading-8 text-gray-300">{minValue}</span>
+              <Slider bind:minValue bind:maxValue />
+              <span class="mt-4 text-lg leading-8 text-gray-300">{maxValue}</span>
+            </div>
+  
+            <!-- alert -->
+            {#if showAlertOnSubmittingInvalid}
+              <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
+                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                </svg>
+                <span class="sr-only">Info</span>
+                <span class="text-lg font-semibold leading-6 text-white">
+                  Please fill out all the fields!
+                </span>
+              </div>
             {/if}
+  
+            <div>
+              {#if isAuthenticated}
+                <button
+                  on:click={handleSubmit}
+                  type="submit"
+                  class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                >
+                  Submit
+                </button>
+              {:else }
+                <button
+                  on:click={() => showModal = true}
+                  type="submit"
+                  class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                >
+                Start
+              </button>
+              {/if}
+            </div>
           </div>
         </div>
         {/if}
@@ -621,16 +633,6 @@
         <!-- end list -->
       </div>
     </div>
-    <div
-      class="absolute left-1/2 top-0 -z-10 -translate-x-1/2 blur-3xl xl:-top-6"
-      aria-hidden="true"
-    >
-      <div
-        class="aspect-[1155/678] w-[72.1875rem] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30"
-        style="clip-path: polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"
-      ></div>
-    </div>
-  </div>
 </main>
 
 <!-- <style lang="postcss">
