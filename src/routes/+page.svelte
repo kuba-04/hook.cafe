@@ -14,6 +14,9 @@
     setProfileData,
   } from "$lib/authUtils";
 
+  const PROFILE_FILTER = {kinds: [0] };
+  const KIND_1_FILTER = { kinds: [1] };
+
   let ndk = new NDK({
     explicitRelayUrls: [RELAY_URL],
   });
@@ -106,7 +109,6 @@
     submittedEvents.forEach(e => {
       if (isRootNote(e)) {
         submitted = e;
-        localStorage.setItem('myEvent', e);
       } else if (isReplyNote(e)) {
         selectedAuthor = e.tagValue('p') || '';
         localStorage.setItem('selected', selectedAuthor);
@@ -156,10 +158,7 @@
   }
 
   async function initMessages() {
-    console.log('initMessages')
-    const profileFilter = {kinds: [0] };
-    const fetchFilter = { kinds: [1] };
-    subscription = ndk.subscribe([fetchFilter, profileFilter], {
+    subscription = ndk.subscribe([KIND_1_FILTER, PROFILE_FILTER], {
       closeOnEose: false,
     });
     subscription.on("event", async (event) => {
@@ -168,7 +167,7 @@
         addMessage(event);
       }
     });
-    ndk.fetchEvents([fetchFilter]).then(events => {
+    ndk.fetchEvents([KIND_1_FILTER]).then(events => {
       for (const event of events) {
         const eventCity = JSON.parse(event.content).city;
         if (isRootNote(event) && isTheSameCity(city, eventCity)) {
@@ -183,98 +182,74 @@
   }
 
   async function initConnectedMessages() {
-    console.log('initConnected')
-    const profileFilter = {kinds: [0] };
-  
     // 1. selected and its parent
-    let selectedNote;
     ndk.fetchEvents({ kinds: [1], authors: [selectedAuthor] }).then(
       notes => notes.forEach(e => {
       // selected
         if (isRootNote(e)) {
-          selectedNote = e;
-        // localStorage.setItem('myEvent', e);
-        }
-
-
+          addMessage(e);
+        } else {
+          // and his parent:
+          const selectedParentKey = e.tagValue('p');
+          ndk.fetchEvents({ kinds: [1], authors: [selectedParentKey] })
+            .then(p => p.forEach(note => {
+                if (isRootNote(note)) {
+                  addMessage(note);
+                }
+              })
+            )
+        } 
     }));
 
     // 2. replies to selected
-    const generalFilter = { kinds: [1] };
-    let selectedReplyNotes = [];
-    // const repliesToSelected = await ndk.fetchEvents(generalFilter);
-    // for (const note of repliesToSelected) {
-    //   if (note.getMatchingTags('e', selectedAuthor) !== null) {
-    //     selectedReplyNotes.push(note)
-    //     }
-    // }
-    ndk.fetchEvents(generalFilter).then(notes => {
+    ndk.fetchEvents(KIND_1_FILTER).then(notes => {
       for (const note of notes) {
         if (isReplyNote(note) && note.getMatchingTags('e', selectedAuthor) !== null) {
-          // console.log('filtered: ', note)
-          selectedReplyNotes.push(note);
+          addMessage(note);
         }
       }
     })
-    // console.log('selectedReplyNotes: ', selectedReplyNotes )
     
-    // TODO check this out
     // 3. replies to mine 
     const currentUserKey = (await signer.user()).pubkey;
-    let toMineReplyNotes = [];
-    const repliesToMine = await ndk.fetchEvents(generalFilter);
-    for (const note of repliesToMine) {
-      if (note.getMatchingTags('e', currentUserKey) !== null) {
-        toMineReplyNotes.push(note)
+    await ndk.fetchEvents(KIND_1_FILTER).then(notes => {
+      for (const note of notes) {
+        if (isReplyNote(note) && note.getMatchingTags('e', currentUserKey) !== null) {
+          addMessage(note);
+        }
       }
-    }
+    })
 
-    subscription = ndk.subscribe([generalFilter,  profileFilter], {
+    subscription = ndk.subscribe([KIND_1_FILTER,  PROFILE_FILTER], {
       closeOnEose: false,
     } );
     subscription.on("event", async (event) => {
       if (isReplyNote(event)) {
-        // selected parent has to add me:
+        // selected author has to my note:
         addMessage(event);
-
-        // I have to add the parent
+        // and we have to add the parent's note:
         const selectedParentKey = event.tagValue('p');
         ndk.fetchEvents({ kinds: [1], authors: [selectedParentKey] })
-        .then(p => p.forEach(note => {
-            if (isRootNote(note)) {
-              addMessage(note);
-              console.log('root: ', note )
-            }
-          })
-        )
+          .then(p => p.forEach(note => {
+              if (isRootNote(note)) {
+                addMessage(note);
+              }
+            })
+          )
       }
     });
-
-    // todo: why kareem doesn't load mike
-    
-    const allNotes = new Set([...selectedReplyNotes, ...toMineReplyNotes]);
-    
-    addMessage(selectedNote);
-    for (const event of allNotes) {
-      if (isReplyNote(event)) {
-        addMessage(event);
-      }
-    }
   };
 
-  onDestroy(() => {
-    if (subscription) {
-      subscription.stop();
-    }
-  });
+  // onDestroy(async () => {
+  //   if (subscription) {
+  //     await subscription.stop();
+  //   }
+  // });
 
   async function addMessage(event) {
     const idExists = messages.some(m => m.id === event.id);
     const pubkeyExists = messages.some(m => m.pubkey === event.pubkey);
-    // console.log('all ', messages)
-    // console.log('adding arrived: ', event )
     if (!idExists && !pubkeyExists) {
-      // console.log('arrived not exist: ', event )
       messages = [{ ...event, author: null }, ...messages].sort((a, b) => b.created_at - a.created_at);
       await fetchUserProfile(event.pubkey);
     }
@@ -424,7 +399,6 @@
 
     try {
       submitted = await sendMessage(message);
-      localStorage.setItem('myEvent', submitted);
     } catch (error) {
       console.log(error);
     } finally {
