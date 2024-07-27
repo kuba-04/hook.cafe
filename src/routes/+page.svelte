@@ -182,63 +182,62 @@
   }
 
   async function initConnectedMessages() {
-    // 1. selected and its parent
-    ndk.fetchEvents({ kinds: [1], authors: [selectedAuthor] }).then(
-      notes => notes.forEach(e => {
-      // selected
-        if (isRootNote(e)) {
-          addMessage(e);
-        } else {
-          // and his parent:
-          const selectedParentKey = e.tagValue('p');
-          ndk.fetchEvents({ kinds: [1], authors: [selectedParentKey] })
-            .then(p => p.forEach(note => {
-                if (isRootNote(note)) {
-                  addMessage(note);
-                }
-              })
-            )
-        } 
-    }));
-
-    // 2. replies to selected
-    ndk.fetchEvents(KIND_1_FILTER).then(notes => {
-      for (const note of notes) {
-        if (isReplyNote(note) && note.getMatchingTags('e', selectedAuthor) !== null) {
-          addMessage(note);
-        }
-      }
-    })
+    const selectedAuthorFilter = { kinds: [1], authors: [selectedAuthor] };
     
-    // 3. replies to mine 
-    const currentUserKey = (await signer.user()).pubkey;
-    await ndk.fetchEvents(KIND_1_FILTER).then(notes => {
-      for (const note of notes) {
-        if (isReplyNote(note) && note.getMatchingTags('e', currentUserKey) !== null) {
-          addMessage(note);
-        }
+    // Fetch selected and its parent messages
+    await fetchAndAddMessages(selectedAuthorFilter, isRootNote);
+    await fetchAndAddMessages(selectedAuthorFilter, async (note) => {
+      if (isReplyNote(note)) {
+        await fetchParentAndAddMessage(note);
+        return false;
       }
-    })
+      return true;
+    });
 
-    subscription = ndk.subscribe([KIND_1_FILTER,  PROFILE_FILTER], {
+    // Fetch replies to selected messages
+    await fetchAndAddMessages(KIND_1_FILTER, (note) => 
+      isReplyNote(note) && note.getMatchingTags('e', selectedAuthor) !== null
+    );
+
+    // Fetch replies to current user's messages
+    const currentUserKey = (await signer.user()).pubkey;
+    await fetchAndAddMessages(KIND_1_FILTER, (note) => 
+      isReplyNote(note) && note.getMatchingTags('e', currentUserKey) !== null
+    );
+
+    // Set up subscription for real-time updates
+    subscription = ndk.subscribe([KIND_1_FILTER, PROFILE_FILTER], {
       closeOnEose: false,
-    } );
+    });
+
     subscription.on("event", async (event) => {
       if (isReplyNote(event)) {
-        // selected author has to my note:
         addMessage(event);
-        // and we have to add the parent's note:
-        const selectedParentKey = event.tagValue('p');
-        ndk.fetchEvents({ kinds: [1], authors: [selectedParentKey] })
-          .then(p => p.forEach(note => {
-              if (isRootNote(note)) {
-                addMessage(note);
-              }
-            })
-          )
+        await fetchParentAndAddMessage(event);
       }
     });
-  };
+  }
+
+  async function fetchAndAddMessages(filter, conditionFn) {
+    const notes = await ndk.fetchEvents(filter);
+    notes.forEach(note => {
+      if (conditionFn(note)) {
+        addMessage(note);
+      }
+    });
+  }
+
+  async function fetchParentAndAddMessage(event) {
+    const parentKey = event.tagValue('p');
+    if (parentKey) {
+      const parentNotes = await ndk.fetchEvents({ kinds: [1], authors: [parentKey] });
+      parentNotes.forEach(note => {
+        if (isRootNote(note)) {
+          addMessage(note);
+        }
+      });
+    }
+  }
 
   // onDestroy(async () => {
   //   if (subscription) {
