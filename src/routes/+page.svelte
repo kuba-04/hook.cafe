@@ -156,6 +156,7 @@
   }
 
   async function initMessages() {
+    console.log('initMessages')
     const profileFilter = {kinds: [0] };
     const fetchFilter = { kinds: [1] };
     subscription = ndk.subscribe([fetchFilter, profileFilter], {
@@ -182,29 +183,40 @@
   }
 
   async function initConnectedMessages() {
+    console.log('initConnected')
     const profileFilter = {kinds: [0] };
   
     // 1. selected and its parent
     let selectedNote;
-    let selectedParentNote;
-    const fetchSelectedFilter = { kinds: [1], authors: [selectedAuthor] };
-    await ndk.fetchEvents(fetchSelectedFilter).then(
+    ndk.fetchEvents({ kinds: [1], authors: [selectedAuthor] }).then(
       notes => notes.forEach(e => {
-      if (isRootNote(e)) {
-        selectedNote = e;
-        localStorage.setItem('myEvent', e);
-      }
+      // selected
+        if (isRootNote(e)) {
+          selectedNote = e;
+        // localStorage.setItem('myEvent', e);
+        }
+
+
     }));
 
     // 2. replies to selected
     const generalFilter = { kinds: [1] };
     let selectedReplyNotes = [];
-    const repliesToSelected = await ndk.fetchEvents(generalFilter);
-    for (const note of repliesToSelected) {
-      if (note.getMatchingTags('e', selectedAuthor) !== null) {
-        selectedReplyNotes.push(note)
+    // const repliesToSelected = await ndk.fetchEvents(generalFilter);
+    // for (const note of repliesToSelected) {
+    //   if (note.getMatchingTags('e', selectedAuthor) !== null) {
+    //     selectedReplyNotes.push(note)
+    //     }
+    // }
+    ndk.fetchEvents(generalFilter).then(notes => {
+      for (const note of notes) {
+        if (isReplyNote(note) && note.getMatchingTags('e', selectedAuthor) !== null) {
+          // console.log('filtered: ', note)
+          selectedReplyNotes.push(note);
         }
-    }
+      }
+    })
+    // console.log('selectedReplyNotes: ', selectedReplyNotes )
     
     // TODO check this out
     // 3. replies to mine 
@@ -219,26 +231,31 @@
 
     subscription = ndk.subscribe([generalFilter,  profileFilter], {
       closeOnEose: false,
-    });
+    } );
     subscription.on("event", async (event) => {
       if (isReplyNote(event)) {
-        // all root events for each selection/reply
-        const selectedParentKey = event.tagValue('p') || '';
+        // selected parent has to add me:
+        addMessage(event);
+
+        // I have to add the parent
+        const selectedParentKey = event.tagValue('p');
         ndk.fetchEvents({ kinds: [1], authors: [selectedParentKey] })
         .then(p => p.forEach(note => {
-          if (isRootNote(note)) {
+            if (isRootNote(note)) {
               addMessage(note);
+              console.log('root: ', note )
             }
           })
         )
       }
     });
+
+    // todo: why kareem doesn't load mike
     
     const allNotes = new Set([...selectedReplyNotes, ...toMineReplyNotes]);
     
+    addMessage(selectedNote);
     for (const event of allNotes) {
-      addMessage(selectedNote);
-      addMessage(selectedParentNote);
       if (isReplyNote(event)) {
         addMessage(event);
       }
@@ -254,7 +271,10 @@
   async function addMessage(event) {
     const idExists = messages.some(m => m.id === event.id);
     const pubkeyExists = messages.some(m => m.pubkey === event.pubkey);
+    // console.log('all ', messages)
+    // console.log('adding arrived: ', event )
     if (!idExists && !pubkeyExists) {
+      // console.log('arrived not exist: ', event )
       messages = [{ ...event, author: null }, ...messages].sort((a, b) => b.created_at - a.created_at);
       await fetchUserProfile(event.pubkey);
     }
@@ -300,9 +320,9 @@
         ['e', event.id],
         ['p', event.pubkey]
       ];
-    replyEvent.content = JSON.stringify(ownEvent?.content || '');
+    replyEvent.content = ownEvent?.content || '';
+    messages = [];
     replyEvent.publish().then(() => {
-      messages = [];
       userProfiles.clear();
       initConnectedMessages();
       }
@@ -363,6 +383,7 @@
 
   // time picker
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
+  import NostriChat from "$lib/NostriChat.svelte";
   let timeFrom = "12:00";
   let timeTo = "13:00";
 
@@ -423,10 +444,6 @@
 
 
 <main>
-  <!-- <div>
-    todo
-    <NostriChat></NostriChat>
-  </div> -->
   {#if showModal}
     <Modal bind:showModal>
       <Login on:register={handleRegister} on:login={handleLogin} />
@@ -604,7 +621,9 @@
             {#each messages as message (message.id)}
               <li on:click={select(message)} class="flex justify-between gap-x-6 py-5 hover:bg-gray-600 cursor-pointer">
                 <div class="flex min-w-0 gap-x-4">
-                  <img class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200" src="{message.author?.avatar}" alt="">
+                  <div class="flex min-w-10 items-center">
+                    <img class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200" src="{message.author?.avatar}" alt="">
+                  </div>
                   <div class="min-w-0 flex-auto">
                     <p class="text-sm font-semibold leading-6 text-white">
                       {parseEventContent(message).parsedContent.word1}
@@ -617,12 +636,12 @@
                     </p>
                   </div>
                 </div>
-                <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-end">
+                <div class=" shrink-0 sm:flex sm:flex-col sm:items-end">
                   <p class="text-sm leading-6 text-gray-200">
                     {parseEventContent(message).parsedContent.location} @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(message).parsedContent.timeTo}
                   </p>
                   <small class="text-xs leading-6 text-gray-400">
-                    added {new Date(new Date() - new Date(message.created_at * 1000)).toLocaleTimeString([], {timeStyle: "short"}) } ago
+                    added {new Date(new Date() - new Date(message.created_at * 1000)).toLocaleTimeString([], {timeStyle: "short"}) }
                   </small>
                   <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
                 </div>
@@ -630,6 +649,10 @@
             {/each}
           </ul>
         </dl>
+        <!-- <div>
+          todo
+          <NostriChat />
+        </div> -->
         <!-- end list -->
       </div>
     </div>
