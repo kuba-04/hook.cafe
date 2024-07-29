@@ -246,7 +246,7 @@
   // });
 
   async function addMessage(event) {
-    const idExists = messages.some(m => m.id === event.id);
+        const idExists = messages.some(m => m.id === event.id);
     const pubkeyExists = messages.some(m => m.pubkey === event.pubkey);
     if (!idExists && !pubkeyExists) {
       messages = [{ ...event, author: null }, ...messages].sort((a, b) => b.created_at - a.created_at);
@@ -428,10 +428,7 @@
         <div class="absolute top-5 left-10 items-center">
           <p class="text-lg text-gray-300">
             Your {city?.cityName} group <br class="md:hide"> 
-            is shaping
-            <span class="animate-ping">.</span>
-            <span class="animate-ping">.</span>
-            <span class="animate-ping">.</span>
+            is shaping<span class="animate-ping">...</span>
           </p>
         </div>
         <div class="absolute top-0 right-10 h-16">
@@ -632,8 +629,29 @@
                 </div>
               </li>
             {/each}
+            {#if submitted}
+              <li class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
+                <div class="place-content-center min-w-0 gap-x-4">
+                  <span class="text-gray-200 animate-ping">?</span>
+                  <span class="text-gray-200 animate-ping">?</span>
+                  <span class="text-gray-200 animate-ping">?</span>
+                </div>
+              </li>
+            {/if}
           </ul>
         </dl>
+
+        <div>
+          {#if selectedAuthor && messages.length > 3}
+            <button
+              on:click={() => {}}
+              type="submit"
+              class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+            >
+              Join chat
+            </button>
+          {/if}
+        </div>
         <!-- <div>
           todo
           <NostriChat />
