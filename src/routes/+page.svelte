@@ -16,6 +16,7 @@
 
   const PROFILE_FILTER = {kinds: [0] };
   const KIND_1_FILTER = { kinds: [1] };
+  const KIND_40_FILTER = { kinds: [40] };
 
   let ndk = new NDK({
     explicitRelayUrls: [RELAY_URL],
@@ -34,6 +35,8 @@
   let userProfiles = new Map();
   let submitted = null;
   let selectedAuthor = "";
+  let channel = null;
+  let chatOpen = null;
 
   let showAlertOnSelectUnsubmitted = false;
   let showAlertOnSubmittingInvalid = false;
@@ -206,7 +209,7 @@
     );
 
     // Set up subscription for real-time updates
-    subscription = ndk.subscribe([KIND_1_FILTER, PROFILE_FILTER], {
+    subscription = ndk.subscribe([KIND_1_FILTER, PROFILE_FILTER, KIND_40_FILTER], {
       closeOnEose: false,
     });
 
@@ -214,6 +217,10 @@
       if (isReplyNote(event)) {
         addMessage(event);
         await fetchParentAndAddMessage(event);
+      }
+      if (event.kind === 40) {
+        channel = event.id;
+        console.log('event kind 40 id: ', event.id);
       }
     });
   }
@@ -358,6 +365,7 @@
   // time picker
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
   import NostriChat from "$lib/NostriChat.svelte";
+  import Chat from "$lib/Chat/Chat.svelte";
   let timeFrom = "12:00";
   let timeTo = "13:00";
 
@@ -413,6 +421,28 @@
     return ndkEvent;
   }
 
+
+  // todo: why this is always clicked????
+  async function openOrJoinChat() {
+    console.log("open or join channel..")
+    if (!channel) {
+      console.log("creating channel..")
+      let channelContent = {};
+      const ndkEvent = new NDKEvent(ndk);
+      ndkEvent.kind = 40;
+      
+      channelContent.name = city.cityName + "_group";
+      channelContent.about = "let's meet in real life!";
+      channelContent.relays = RELAY_URL;
+      ndkEvent.content = JSON.stringify(channelContent);
+
+      await ndkEvent.publish();
+    } else {
+      console.log("joining...")
+      chatOpen = true;
+    }
+  }
+
 </script>
 
 
@@ -451,7 +481,7 @@
         </div> -->
       {/if}
       <div
-        class={submitted || !isAuthenticated ? "mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-1" : "mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2"}
+        class={(submitted || !isAuthenticated) && !chatOpen ? "mx-auto grid max-w-2xl grid-cols-1 gap-x-8  lg:max-w-none lg:grid-cols-1" : "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-2"}
       >
 
         <!-- form -->
@@ -583,6 +613,19 @@
         </div>
         {/if}
         <!-- end form -->
+
+        <!-- chat -->
+        {#if chatOpen}
+        <!-- {#if true} -->
+        <!-- <div class="isolate overflow-hidden bg-gray-900 min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"> -->
+        <div class="bg-gray-900 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">
+          <div class="max-w-4xl max-y-md py-16 sm:py-24 lg:py-32">
+
+            <Chat></Chat>
+          </div>
+        </div>
+        {/if}
+
         <!-- list -->
         <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
           {#if showAlertOnSelectUnsubmitted}
@@ -632,6 +675,7 @@
             {#if submitted}
               <li class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
                 <div class="place-content-center min-w-0 gap-x-4">
+                  <span class="text-gray-200 animate-ping">anyone else</span>
                   <span class="text-gray-200 animate-ping">?</span>
                   <span class="text-gray-200 animate-ping">?</span>
                   <span class="text-gray-200 animate-ping">?</span>
@@ -642,13 +686,13 @@
         </dl>
 
         <div>
-          {#if selectedAuthor && messages.length > 3}
+          {#if submitted && messages.length > 3 && !chatOpen}
             <button
-              on:click={() => {}}
-              type="submit"
+              on:click={openOrJoinChat}
+              type="button"
               class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
             >
-              Join chat
+              Join chat 💬
             </button>
           {/if}
         </div>
