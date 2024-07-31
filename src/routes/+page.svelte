@@ -13,6 +13,7 @@
     recreateSigner,
     setProfileData,
   } from "$lib/authUtils";
+  import { nip19 } from "nostr-tools";
 
   const PROFILE_FILTER = {kinds: [0] };
   const KIND_1_FILTER = { kinds: [1] };
@@ -29,13 +30,14 @@
   let city = null;
   let avatar = "";
   let privKey = "";
+  let pubKey = "";
   let signer;
   let subscription;
   let messages = [];
   let userProfiles = new Map();
   let submitted = null;
   let selectedAuthor = "";
-  let channel = null;
+  let channelId = null;
   let chatOpen = null;
 
   let showAlertOnSelectUnsubmitted = false;
@@ -65,7 +67,7 @@
 
     await setProfileData(ndk, name, city, avatar);
 
-    const pubKey = (await signer.user()).npub;
+    pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     name = profile.name || '';
     city = profile.city || null;
@@ -81,7 +83,7 @@
 
   async function handleLogin(event) {
     privKey = event.detail.privKey;
-    localStorage.setItem('secure', encryptKey(privKey));
+    localStorage.setItem('secure', encryptKey(privKey)); // todo
     signer = recreateSigner(privKey);
     ndk = new NDK({
       explicitRelayUrls: [RELAY_URL],
@@ -91,7 +93,7 @@
     isAuthenticated = true;
     showModal = false;
 
-    const pubKey = (await signer.user()).npub;
+    pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     name = profile.name || '';
     city = profile.city || null;
@@ -106,7 +108,7 @@
   }
 
   async function loadOwnEvents() {
-    const currentUserKey = (await signer.user()).pubkey;
+    const currentUserKey = (await signer.user()).pubkey;  // todo: refactor all those currentUserKeys
     const fetchSelectedFilter = { kinds: [1], authors: [currentUserKey] };
     const submittedEvents = await ndk.fetchEvents(fetchSelectedFilter);
     submittedEvents.forEach(e => {
@@ -138,7 +140,7 @@
     await ndk.connect();
     await loadOwnEvents();
 
-    const pubKey = (await signer.user()).npub;
+    pubKey = (await signer.user()).npub;
     const profile = await getUserProfile(ndk, pubKey);
     avatar = profile.avatar || "";
     name = profile.name || "";
@@ -149,7 +151,7 @@
     } else {
       await initMessages();
     }
-  });
+  })
 
   function isRootNote(event) {
     return event.kind === 1 && !event.tags.some(tag => tag[0] === 'e');
@@ -219,8 +221,7 @@
         await fetchParentAndAddMessage(event);
       }
       if (event.kind === 40) {
-        channel = event.id;
-        console.log('event kind 40 id: ', event.id);
+        channelId = event.id;
       }
     });
   }
@@ -317,8 +318,6 @@
       parsedContent: JSON.parse(event.content),
     };
   }
-  // import NostriChat from "$lib/NostriChat.svelte";
-
   // price slider
   import Slider from "../lib/Slider.svelte";
   import { goto } from "$app/navigation";
@@ -364,7 +363,6 @@
 
   // time picker
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
-  import NostriChat from "$lib/NostriChat.svelte";
   import Chat from "$lib/Chat/Chat.svelte";
   let timeFrom = "12:00";
   let timeTo = "13:00";
@@ -424,9 +422,8 @@
 
   // todo: why this is always clicked????
   async function openOrJoinChat() {
-    console.log("open or join channel..")
-    if (!channel) {
-      console.log("creating channel..")
+    if (!channelId) {
+      console.log("creating new channel..")
       let channelContent = {};
       const ndkEvent = new NDKEvent(ndk);
       ndkEvent.kind = 40;
@@ -438,9 +435,13 @@
 
       await ndkEvent.publish();
     } else {
-      console.log("joining...")
+      console.log("joining channel...")
       chatOpen = true;
     }
+  }
+
+  function decodedKey() {
+    return nip19.decode(pubKey).data;
   }
 
 </script>
@@ -620,8 +621,7 @@
         <!-- <div class="isolate overflow-hidden bg-gray-900 min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"> -->
         <div class="bg-gray-900 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">
           <div class="max-w-4xl max-y-md py-16 sm:py-24 lg:py-32">
-
-            <Chat></Chat>
+            <Chat ndk={ndk} username={name} channelId={channelId} signerKey={decodedKey()}></Chat>
           </div>
         </div>
         {/if}
@@ -672,7 +672,7 @@
                 </div>
               </li>
             {/each}
-            {#if submitted}
+            <!-- {#if submitted}
               <li class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
                 <div class="place-content-center min-w-0 gap-x-4">
                   <span class="text-gray-200 animate-ping">anyone else</span>
@@ -681,7 +681,7 @@
                   <span class="text-gray-200 animate-ping">?</span>
                 </div>
               </li>
-            {/if}
+            {/if} -->
           </ul>
         </dl>
 
@@ -692,7 +692,7 @@
               type="button"
               class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
             >
-              Join chat 💬
+              Chat  💬
             </button>
           {/if}
         </div>
