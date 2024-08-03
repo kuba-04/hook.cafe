@@ -19,7 +19,6 @@
   let subscription;
 
   onMount(async () => {
-	  console.log('channelId ', channelId)
     subscription = ndk.subscribe([KIND_42_FILTER], {
 		closeOnEose: false,
     });
@@ -102,14 +101,14 @@
 </script>
 
 <div
-  class="message-box rounded-lg border border-radius mx-2 my-2 flex flex-col justify-between"
+  class="message-box rounded-lg border border-radius mx-2 my-2 flex flex-col justify-between overflow-y-scroll no-scrollbar"
 >
   <div class=" chat-header border-b px-4 py-1">
-    <p class="text-gray-300">👋 Nice to meet you! Any 🥗 suggestions?</p>
+    <p class="text-gray-300">Hello! 👋</p>
   </div>
   <div
     bind:this={messageContainerRef}
-    class="flex-grow overflow-auto w-full h-full py-1"
+    class="flex-grow overflow-auto w-full h-full py-1 overflow-y-scroll no-scrollbar"
   >
     <div
       style="min-height: 100%;"
@@ -130,10 +129,17 @@
         class="border rounded-lg px-2 w-full h-full bg-gray-100"
       />
     </span>
+<!-- text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 -->
+    <button on:click={handleSend} type="button" class="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800">
+        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
+        </svg>
+      <span class="sr-only">Icon description</span>
+    </button>
 
-    <button
+    <!-- <button
       on:click={handleSend}
-      class="rounded-lg border flex px-3 items-center mx-1 justify-center"
+      class="rounded-lg border flex px-3 items-center mx-1 justify-center "
     >
       <span class="text-gray-400 font-bold">
         <svg
@@ -157,7 +163,7 @@
           </g></svg
         >
       </span>
-    </button>
+    </button> -->
   </div>
 </div>
 
@@ -165,5 +171,13 @@
   .message-box {
     width: 350px;
     height: 300px;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    /* Hide scrollbar for IE, Edge and Firefox */
+    .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
   }
 </style>

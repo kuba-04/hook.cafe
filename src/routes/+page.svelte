@@ -43,6 +43,8 @@
 
   let showAlertOnSelectUnsubmitted = false;
   let showAlertOnSubmittingInvalid = false;
+  let showAlertOnSubmittingSuccess = false;
+  let showAlertOnSelectingSelf = false;
 
   async function handleRegister(event) {
     name = event.detail.name;
@@ -226,7 +228,7 @@
         })
       })
   
-      subscription = ndk.subscribe([KIND_1_FILTER, KIND_40_FILTER, PROFILE_FILTER], {
+      subscription = ndk.subscribe([KIND_1_FILTER, PROFILE_FILTER], {
         closeOnEose: false,
       } );
       subscription.on("event", async (event) => {
@@ -244,18 +246,7 @@
             )
         } 
 
-        // const allChannels = await ndk.fetchEvents(KIND_40_FILTER);
-        // const channelEvent = [...allChannels].filter(event => userProfiles.has(event.pubkey))[0];
-        // if (channelEvent) {
-        //   channelId = channelEvent.id;
-        //   console.log('channelId ', channelId);
-        //   chatOpen = true;
-        // }
-        
-        // if (event.kind === 40) {
-        //   // channelId = event.id;
-        //   console.log('profiles ', userProfiles)
-        // }
+        // todo: question if it is required to subscribe to a chat
       });
   };
 
@@ -304,7 +295,8 @@
     const eventAuthorKey = event.pubkey;
     const currentUserKey = (await signer.user()).pubkey;
     if (eventAuthorKey === currentUserKey) {
-      console.log("You can't select yourself!");
+      showAlertOnSelectingSelf = true;
+      setTimeout(() => showAlertOnSelectingSelf = false, 2000);
       return;
     }
     selectedAuthor = eventAuthorKey;
@@ -423,6 +415,8 @@
       console.log(error);
     } finally {
       loading = false;
+      showAlertOnSubmittingSuccess = true;
+      setTimeout(() => showAlertOnSubmittingSuccess = false, 5000);
     }
   }
 
@@ -441,10 +435,10 @@
       const channelEvent = [...allChannels].filter(event => userProfiles.has(event.pubkey))[0];
       if (channelEvent) {
         channelId = channelEvent.id;
-        console.log('channelId ', channelId);
         chatOpen = true;
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
-        console.log("creating new channel..")
+        console.log("creating a new channel..")
         let channelContent = {};
         const ndkEvent = new NDKEvent(ndk);
         ndkEvent.kind = 40;
@@ -459,9 +453,9 @@
           const latestChannelEvent = [...allLatestChannels].filter(event => userProfiles.has(event.pubkey))[0];
           if (latestChannelEvent) {
             channelId = latestChannelEvent.id;
-            console.log('channelId ', latestChannelEvent);
             console.log("joining channel...")
             chatOpen = true;
+            window.scrollTo({ top: 0, behavior: "smooth" });
           }
           })
         });
@@ -469,6 +463,7 @@
     } else {
       console.log("joining channel...")
       chatOpen = true;
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
 
@@ -491,8 +486,7 @@
         {#if selectedAuthor.length > 0}
           <div class="absolute top-5 left-10 items-center">
             <p class="text-lg text-gray-300">
-              Your {city?.cityName} group <br class="md:hide"> 
-              is shaping<span class="animate-ping">...</span>
+              Building {city?.cityName} group<span class="animate-ping">...</span>
             </p>
           </div>
         {:else if submitted}
@@ -644,7 +638,7 @@
                 <button
                   on:click={() => showModal = true}
                   type="submit"
-                  class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                  class="mt-5 float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
                 >
                 Start
               </button>
@@ -666,6 +660,25 @@
         </div>
         {/if}
 
+        <!-- alert -->
+        {#if showAlertOnSubmittingSuccess}
+          <div class="flex items-center p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400" role="alert">
+            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+            </svg>
+            <span class="sr-only">Info</span>
+            <div class="text-lg font-semibold leading-6 text-white">
+              <span class="font-medium">Great!</span> Now select one person to join your table 🙂
+            </div>
+            <button on:click={() => showAlertOnSubmittingSuccess = false} type="button" class="ms-auto -mx-1.5 -my-1.5 bg-blue-50 text-blue-500 rounded-lg focus:ring-2 focus:ring-blue-400 p-1.5 hover:bg-blue-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700" data-dismiss-target="#alert-1" aria-label="Close">
+              <span class="sr-only">Close</span>
+              <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+              </svg>
+            </button> 
+          </div>
+        {/if}
+
         {#await initConnectedMessages}
           <p>Loading...</p> <!-- Loader displayed while waiting -->
         {:then _}
@@ -681,6 +694,17 @@
                 <span class="sr-only">Info</span>
                 <span class="text-lg font-semibold leading-6 text-white">
                   Before selecting, submit your own request!
+                </span>
+              </div>
+            {/if}
+            {#if showAlertOnSelectingSelf}
+              <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
+                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                </svg>
+                <span class="sr-only">Info</span>
+                <span class="text-lg font-semibold leading-6 text-white">
+                  Don't be a narcist! Please select someone else!
                 </span>
               </div>
             {/if}
@@ -710,8 +734,11 @@
                     <div class="text-sm leading-6 text-gray-200">
                       @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(message).parsedContent.timeTo}
                     </div>
-                    <small class="text-xs leading-6 text-gray-400">
+                    <!-- <small class="text-xs leading-6 text-gray-400">
                       added {new Date(message.created_at * 1000).toLocaleTimeString([], {timeStyle: 'short'}) }
+                    </small> -->
+                    <small class="text-xs leading-6 text-gray-400">
+                      💵 {parseEventContent(message).parsedContent.minPrice} - {parseEventContent(message).parsedContent.maxPrice} 
                     </small>
                     <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
                   </div>
@@ -735,7 +762,7 @@
               <button
                 on:click={openOrJoinChat}
                 type="button"
-                class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                class="mt-5 float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 hover:outline-2 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
               >
                 Chat 💬
               </button>

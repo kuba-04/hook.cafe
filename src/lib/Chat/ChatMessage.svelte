@@ -7,7 +7,7 @@
   </script>
   
   <div class:relative="{true}" class:flex="{true}" class:pb-1="{true}" class:px-1="{true}" class:justify-end="{isOwned}" class:justify-start="{!isOwned}">
-    <div class="relative w-5/6 px-2 break-all rounded-lg text-sm py-1 {isOwned ? 'bg-gray-200' : 'bg-orange-200'}">
+    <div class="relative w-5/6 px-2 break-all rounded-lg text-sm py-1 {isOwned ? 'bg-gray-200' : 'bg-green-200'}">
       {#if !isOwned}
         <div class="font-bold text-gray-600">
           {username}
