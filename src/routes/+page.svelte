@@ -493,7 +493,7 @@
               Building {city?.cityName} group<span class="animate-ping">...</span>
             </p>
           </div>
-        {:else if submitted && city.cityName}
+        {:else if submitted && city?.cityName}
           <div class="absolute top-5 left-10 items-center">
             <p class="text-lg text-gray-300">
               Hello {city?.cityName} people!<br class="md:hide"> 

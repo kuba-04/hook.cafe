@@ -17,6 +17,8 @@
   let avatar = "";
   let showModal = false;
   let showAlertOnSave = false;
+  let hasAlreadySubmitted = false;
+  let showAlertOnAlreadySubmitted = false;
   
   let query = '';
   let results = [];
@@ -28,12 +30,20 @@
     ndk = new NDK({ explicitRelayUrls: [RELAY_URL], signer });
     await ndk.connect();
 
-    pubKey = (await signer.user()).npub;
+    const user = (await signer.user());
+    pubKey = user.npub;
     const profile = await getUserProfile(ndk, pubKey);
     name = profile.name || "";
     city = profile.city || null;
     query = `${city.cityName}, ${city.cityCountry}`;
     avatar = profile.avatar || "";
+
+    await ndk.fetchEvents({kinds: [1], authors: [user.pubkey]})
+      .then(events => {
+        if (events.size > 0) {
+          hasAlreadySubmitted = true;
+        }
+      })
   });
 
   function selectAvatar(av) {
@@ -43,8 +53,12 @@
   }
 
   async function save() {
+    if (hasAlreadySubmitted) {
+      showAlertOnAlreadySubmitted = true;
+      setTimeout(() => showAlertOnAlreadySubmitted = false, 3000);
+      return;
+    }
     if (city === null || name.length === 0) {
-      console.log("cant save")
       showAlertOnSave = true;
       setTimeout(() => showAlertOnSave = false, 1500);
       return;
@@ -222,6 +236,17 @@
         <span class="sr-only">Info</span>
         <span class="text-lg font-semibold leading-6 text-white">
           Some fields are not filled!
+        </span>
+      </div>
+    {/if}
+    {#if showAlertOnAlreadySubmitted}
+      <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300" role="alert">
+        <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+        </svg>
+        <span class="sr-only">Info</span>
+        <span class="text-lg font-semibold leading-6 text-white">
+          You can't change the city if already sent request for it. Wait until it expires.
         </span>
       </div>
     {/if}
