@@ -19,17 +19,24 @@
   let subscription;
 
   onMount(async () => {
+	  console.log('channelId ', channelId)
     subscription = ndk.subscribe([KIND_42_FILTER], {
 		closeOnEose: false,
     });
 	
     subscription.on("event", async (event) => {
-      pushMessage(event.content, event.pubkey === signerKey);
+		const allowedChannelId = event.tagValue('e');
+		if (allowedChannelId === channelId) {
+			pushMessage(event.content, event.pubkey === signerKey);
+		}
     });
     if (messages.length === 0) {
       ndk.fetchEvents([KIND_42_FILTER]).then((events) => {
         for (const event of events) {
-          pushMessage(event.content, event.pubkey === signerKey);
+			const allowedChannelId = event.tagValue('e');
+			if (allowedChannelId === channelId) {
+				pushMessage(event.content, event.pubkey === signerKey);
+			}
         }
       });
     }

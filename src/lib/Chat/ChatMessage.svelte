@@ -15,7 +15,7 @@
       {/if}
       <span>{content}<span>
       <span style="font-size:10px" class="absolute mx-2 my-1 break-all text-gray-500 bottom-0 right-0">
-        {new Date(timestamp).toLocaleTimeString()}
+        {new Date(timestamp).toLocaleTimeString([], {timeStyle: 'short'})}
       <span>
     </div>
   </div>

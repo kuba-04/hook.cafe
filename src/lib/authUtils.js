@@ -85,12 +85,12 @@ export const getUserProfile = async (ndk, pubKey) => {
 //     return await user.fetchProfile();
 // }
 
-export function getUserProfilePubKey(ndk, pubkey) {
+export async function getUserProfilePubKey(ndk, pubkey) {
     const user = ndk.getUser({
         pubkey: pubkey,
       });
 
-    user.fetchProfile();
+    await user.fetchProfile();
     // console.log('user.profile ', user.profile)
     return user.profile;
 }

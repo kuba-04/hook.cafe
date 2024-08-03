@@ -10,6 +10,7 @@
     decryptKey,
     encryptKey,
     getUserProfile,
+    getUserProfilePubKey,
     recreateSigner,
     setProfileData,
   } from "$lib/authUtils";
@@ -187,65 +188,76 @@
   }
 
   async function initConnectedMessages() {
-    const selectedAuthorFilter = { kinds: [1], authors: [selectedAuthor] };
-    
-    // Fetch selected and its parent messages
-    await fetchAndAddMessages(selectedAuthorFilter, isRootNote);
-    await fetchAndAddMessages(selectedAuthorFilter, async (note) => {
-      if (isReplyNote(note)) {
-        await fetchParentAndAddMessage(note);
-        return false;
-      }
-      return true;
-    });
+    // 1. selected and its parent
+    await ndk.fetchEvents({ kinds: [1], authors: [selectedAuthor] }).then(
+        notes => notes.forEach(e => {
+        // selected
+          if (isRootNote(e)) {
+            addMessage(e);
+          } else {
+            // and his parent:
+            const selectedParentKey = e.tagValue('p');
+            ndk.fetchEvents({ kinds: [1], authors: [selectedParentKey] })
+              .then(p => p.forEach(note => {
+                  if (isRootNote(note)) {
+                    addMessage(note);
+                  }
+                })
+              )
+          } 
+      }));
+  
+      // 2. replies to selected
+      // await ndk.fetchEvents(KIND_1_FILTER).then(notes => {
+      //   notes.forEach(note => {
+      //     if (isReplyNote(note) && note.getMatchingTags('e', selectedAuthor) !== null) {
+      //       addMessage(note);
+      //     }
+      //   })
+      // })
+      
+      // 3. replies: to mine & to selected 
+      const currentUserKey = (signer.user()).pubkey;
+      ndk.fetchEvents(KIND_1_FILTER).then(notes => {
+        notes.forEach(note => {
+          if (isReplyNote(note) && (note.getMatchingTags('e', currentUserKey) !== null || note.getMatchingTags('e', selectedAuthor) !== null)) {
+            addMessage(note);
+          }
+        })
+      })
+  
+      subscription = ndk.subscribe([KIND_1_FILTER, KIND_40_FILTER, PROFILE_FILTER], {
+        closeOnEose: false,
+      } );
+      subscription.on("event", async (event) => {
+        if (isReplyNote(event)) {
+          // selected author has to my note:
+          await addMessage(event);
+          // and we have to add the parent's note:
+          const selectedParentKey = event.tagValue('p');
+          await ndk.fetchEvents({ kinds: [1], authors: [selectedParentKey] })
+            .then(p => p.forEach(note => {
+                if (isRootNote(note)) {
+                  addMessage(note);
+                }
+              })
+            )
+        } 
 
-    // Fetch replies to selected messages
-    await fetchAndAddMessages(KIND_1_FILTER, (note) => 
-      isReplyNote(note) && note.getMatchingTags('e', selectedAuthor) !== null
-    );
-
-    // Fetch replies to current user's messages
-    const currentUserKey = (await signer.user()).pubkey;
-    await fetchAndAddMessages(KIND_1_FILTER, (note) => 
-      isReplyNote(note) && note.getMatchingTags('e', currentUserKey) !== null
-    );
-
-    // Set up subscription for real-time updates
-    subscription = ndk.subscribe([KIND_1_FILTER, PROFILE_FILTER, KIND_40_FILTER], {
-      closeOnEose: false,
-    });
-
-    subscription.on("event", async (event) => {
-      if (isReplyNote(event)) {
-        addMessage(event);
-        await fetchParentAndAddMessage(event);
-      }
-      if (event.kind === 40) {
-        channelId = event.id;
-      }
-    });
-  }
-
-  async function fetchAndAddMessages(filter, conditionFn) {
-    const notes = await ndk.fetchEvents(filter);
-    notes.forEach(note => {
-      if (conditionFn(note)) {
-        addMessage(note);
-      }
-    });
-  }
-
-  async function fetchParentAndAddMessage(event) {
-    const parentKey = event.tagValue('p');
-    if (parentKey) {
-      const parentNotes = await ndk.fetchEvents({ kinds: [1], authors: [parentKey] });
-      parentNotes.forEach(note => {
-        if (isRootNote(note)) {
-          addMessage(note);
-        }
+        // const allChannels = await ndk.fetchEvents(KIND_40_FILTER);
+        // const channelEvent = [...allChannels].filter(event => userProfiles.has(event.pubkey))[0];
+        // if (channelEvent) {
+        //   channelId = channelEvent.id;
+        //   console.log('channelId ', channelId);
+        //   chatOpen = true;
+        // }
+        
+        // if (event.kind === 40) {
+        //   // channelId = event.id;
+        //   console.log('profiles ', userProfiles)
+        // }
       });
-    }
-  }
+  };
 
   // onDestroy(async () => {
   //   if (subscription) {
@@ -254,26 +266,29 @@
   // });
 
   async function addMessage(event) {
-        const idExists = messages.some(m => m.id === event.id);
-    const pubkeyExists = messages.some(m => m.pubkey === event.pubkey);
-    if (!idExists && !pubkeyExists) {
+    const eventPubkey = event.pubkey;
+    
+    const idExists = messages.some(m => m.id === event.id);
+    const pubkeyExists = messages.some(m => m.pubkey === eventPubkey);
+    const eventCity = JSON.parse(event.content).city;
+    if (!idExists && !pubkeyExists && isTheSameCity(city, eventCity)) {
       messages = [{ ...event, author: null }, ...messages].sort((a, b) => b.created_at - a.created_at);
-      await fetchUserProfile(event.pubkey);
+      await fetchUserProfile(eventPubkey);
     }
   }
 
-  async function fetchUserProfile(pubkey) {
-    if (userProfiles.has(pubkey)) return;    
-    const user = ndk.getUser({ pubkey: pubkey });
+  async function fetchUserProfile(eventPubkey) {
+    if (userProfiles.has(eventPubkey)) return;    
+    const user = ndk.getUser({ pubkey: eventPubkey });
     await user.fetchProfile();
     const profile = user.profile;
-    userProfiles.set(pubkey, profile);
-    await validateMessagesWithProfile(pubkey, profile);
+    userProfiles.set(eventPubkey, profile);
+    validateMessagesWithProfile(eventPubkey, profile);
   }
 
-  async function validateMessagesWithProfile(pubkey, profile) {
+  function validateMessagesWithProfile(eventPubkey, profile) {
     messages = messages.map(msg => 
-      msg.pubkey === pubkey ? { ...msg, author: profile } : msg
+      msg.pubkey === eventPubkey ? { ...msg, author: profile } : msg
     );
   }
 
@@ -420,20 +435,37 @@
   }
 
 
-  // todo: why this is always clicked????
   async function openOrJoinChat() {
     if (!channelId) {
-      console.log("creating new channel..")
-      let channelContent = {};
-      const ndkEvent = new NDKEvent(ndk);
-      ndkEvent.kind = 40;
-      
-      channelContent.name = city.cityName + "_group";
-      channelContent.about = "let's meet in real life!";
-      channelContent.relays = RELAY_URL;
-      ndkEvent.content = JSON.stringify(channelContent);
+      const allChannels = await ndk.fetchEvents(KIND_40_FILTER);
+      const channelEvent = [...allChannels].filter(event => userProfiles.has(event.pubkey))[0];
+      if (channelEvent) {
+        channelId = channelEvent.id;
+        console.log('channelId ', channelId);
+        chatOpen = true;
+      } else {
+        console.log("creating new channel..")
+        let channelContent = {};
+        const ndkEvent = new NDKEvent(ndk);
+        ndkEvent.kind = 40;
+        
+        channelContent.name = city.cityName + "_group";
+        channelContent.about = "let's meet in real life!";
+        channelContent.relays = RELAY_URL;
+        ndkEvent.content = JSON.stringify(channelContent);
 
-      await ndkEvent.publish();
+        ndkEvent.publish().then(ok => {
+          ndk.fetchEvents(KIND_40_FILTER).then(allLatestChannels => {
+          const latestChannelEvent = [...allLatestChannels].filter(event => userProfiles.has(event.pubkey))[0];
+          if (latestChannelEvent) {
+            channelId = latestChannelEvent.id;
+            console.log('channelId ', latestChannelEvent);
+            console.log("joining channel...")
+            chatOpen = true;
+          }
+          })
+        });
+      }
     } else {
       console.log("joining channel...")
       chatOpen = true;
@@ -456,12 +488,20 @@
   <div class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">
     <div class="w-full max-w-4xl py-16 sm:py-24 lg:py-32">
       {#if isAuthenticated}
-        <div class="absolute top-5 left-10 items-center">
-          <p class="text-lg text-gray-300">
-            Your {city?.cityName} group <br class="md:hide"> 
-            is shaping<span class="animate-ping">...</span>
-          </p>
-        </div>
+        {#if selectedAuthor.length > 0}
+          <div class="absolute top-5 left-10 items-center">
+            <p class="text-lg text-gray-300">
+              Your {city?.cityName} group <br class="md:hide"> 
+              is shaping<span class="animate-ping">...</span>
+            </p>
+          </div>
+        {:else if submitted}
+          <div class="absolute top-5 left-10 items-center">
+            <p class="text-lg text-gray-300">
+              Hello {city?.cityName} people!<br class="md:hide"> 
+            </p>
+          </div>
+        {/if}
         <div class="absolute top-0 right-10 h-16">
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
             <a href="/profile">
@@ -626,76 +666,87 @@
         </div>
         {/if}
 
-        <!-- list -->
-        <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
-          {#if showAlertOnSelectUnsubmitted}
-            <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
-              <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
-              </svg>
-              <span class="sr-only">Info</span>
-              <span class="text-lg font-semibold leading-6 text-white">
-                Before selecting, submit your own request!
-              </span>
-            </div>
-          {/if}
-          <ul role="list" class="divide-y divide-gray-100 mt-5">
-            {#each messages as message (message.id)}
-              <li on:click={select(message)} class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
-                <div class="flex min-w-0 gap-x-4">
-                  <div class="flex min-w-10 items-center">
-                    <img class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200" src="{message.author?.avatar}" alt="">
-                  </div>
-                  <div class="min-w-0 flex-auto">
-                    <p class="text-sm font-semibold leading-6 text-white">
-                        {parseEventContent(message).parsedContent.word1}
-                        {parseEventContent(message).parsedContent.word2}
-                        {parseEventContent(message).parsedContent.word3}
-                        {parseEventContent(message).parsedContent.word4}
-                    </p>
-                    <p class="mt-1 truncate text-xs leading-5 text-gray-500">
-                      {message.author?.name}
-                    </p>
-                  </div>
-                </div>
-                <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
-                  <div class="text-sm leading-6 text-gray-200">
-                    {parseEventContent(message).parsedContent.location} 
-                  </div>
-                  <div class="text-sm leading-6 text-gray-200">
-                    @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(message).parsedContent.timeTo}
-                  </div>
-                  <small class="text-xs leading-6 text-gray-400">
-                    added {new Date(message.created_at * 1000).toLocaleTimeString() }
-                  </small>
-                  <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
-                </div>
-              </li>
-            {/each}
-            <!-- {#if submitted}
-              <li class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
-                <div class="place-content-center min-w-0 gap-x-4">
-                  <span class="text-gray-200 animate-ping">anyone else</span>
-                  <span class="text-gray-200 animate-ping">?</span>
-                  <span class="text-gray-200 animate-ping">?</span>
-                  <span class="text-gray-200 animate-ping">?</span>
-                </div>
-              </li>
-            {/if} -->
-          </ul>
-        </dl>
+        {#await initConnectedMessages}
+          <p>Loading...</p> <!-- Loader displayed while waiting -->
+        {:then _}
+          <!-- <p>{data}</p> Content displayed after loading -->
 
-        <div>
-          {#if submitted && messages.length > 3 && !chatOpen}
-            <button
-              on:click={openOrJoinChat}
-              type="button"
-              class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
-            >
-              Chat  💬
-            </button>
-          {/if}
-        </div>
+          <!-- list -->
+          <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
+            {#if showAlertOnSelectUnsubmitted}
+              <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
+                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                </svg>
+                <span class="sr-only">Info</span>
+                <span class="text-lg font-semibold leading-6 text-white">
+                  Before selecting, submit your own request!
+                </span>
+              </div>
+            {/if}
+            <ul role="list" class="divide-y divide-gray-100 mt-5">
+              {#each messages as message (message.id)}
+                <li on:click={select(message)} class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
+                  <div class="flex min-w-0 gap-x-4">
+                    <div class="flex min-w-10 items-center">
+                      <img class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200" src="{message.author?.avatar}" alt="">
+                    </div>
+                    <div class="min-w-0 flex-auto">
+                      <p class="text-sm font-semibold leading-6 text-white">
+                          {parseEventContent(message).parsedContent.word1}
+                          {parseEventContent(message).parsedContent.word2}
+                          {parseEventContent(message).parsedContent.word3}
+                          {parseEventContent(message).parsedContent.word4}
+                      </p>
+                      <p class="mt-1 truncate text-xs leading-5 text-gray-500">
+                        {message.author?.name}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
+                    <div class="text-sm leading-6 text-gray-200">
+                      {parseEventContent(message).parsedContent.location} 
+                    </div>
+                    <div class="text-sm leading-6 text-gray-200">
+                      @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(message).parsedContent.timeTo}
+                    </div>
+                    <small class="text-xs leading-6 text-gray-400">
+                      added {new Date(message.created_at * 1000).toLocaleTimeString([], {timeStyle: 'short'}) }
+                    </small>
+                    <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
+                  </div>
+                </li>
+              {/each}
+              <!-- {#if submitted}
+                <li class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
+                  <div class="place-content-center min-w-0 gap-x-4">
+                    <span class="text-gray-200 animate-ping">anyone else</span>
+                    <span class="text-gray-200 animate-ping">?</span>
+                    <span class="text-gray-200 animate-ping">?</span>
+                    <span class="text-gray-200 animate-ping">?</span>
+                  </div>
+                </li>
+              {/if} -->
+            </ul>
+          </dl>
+
+          <div>
+            {#if selectedAuthor.length > 0 && messages.length > 3 && !chatOpen}
+              <button
+                on:click={openOrJoinChat}
+                type="button"
+                class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+              >
+                Chat 💬
+              </button>
+            {/if}
+          </div>
+
+        {:catch error}
+          <p>Error loading data: {error.message}</p> <!-- Error handling -->
+        {/await}
+
+        
         <!-- <div>
           todo
           <NostriChat />
