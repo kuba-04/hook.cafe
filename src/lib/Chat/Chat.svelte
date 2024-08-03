@@ -27,16 +27,17 @@
 		const allowedChannelId = event.tagValue('e');
 		if (allowedChannelId === channelId) {
 			pushMessage(event.content, event.pubkey === signerKey);
+      scrollToEnd();
 		}
     });
     if (messages.length === 0) {
       ndk.fetchEvents([KIND_42_FILTER]).then((events) => {
         for (const event of events) {
-			const allowedChannelId = event.tagValue('e');
-			if (allowedChannelId === channelId) {
-				pushMessage(event.content, event.pubkey === signerKey);
-			}
-        }
+        const allowedChannelId = event.tagValue('e');
+        if (allowedChannelId === channelId) {
+          pushMessage(event.content, event.pubkey === signerKey);
+          scrollToEnd();
+        }}
       });
     }
   });
@@ -70,10 +71,11 @@
       return;
     }
     messages = [...messages, message];
-	scrollToEnd();
+	  scrollToEnd();
   }
 
   function scrollToEnd() {
+    // document.getElementById("message-box")?.scrollTo({ top: 100000, behavior: "smooth" })
     if (messageContainerRef) {
       messageContainerRef.scrollTop = messageContainerRef.scrollHeight;
     }
@@ -100,7 +102,7 @@
 
 </script>
 
-<div
+<div id="message-box"
   class="message-box rounded-lg border border-radius mx-2 my-2 flex flex-col justify-between overflow-y-scroll no-scrollbar"
 >
   <div class=" chat-header border-b px-4 py-1">
@@ -120,7 +122,7 @@
     </div>
   </div>
 
-  <div class="chat-input h-8 flex mb-2">
+  <div class="chat-input h-8 flex mt-2 mb-2">
     <span class="flex-grow mx-1">
       <input
         placeholder="type..."

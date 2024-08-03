@@ -53,11 +53,12 @@
   }
 
   async function save() {
-    if (hasAlreadySubmitted) {
-      showAlertOnAlreadySubmitted = true;
-      setTimeout(() => showAlertOnAlreadySubmitted = false, 3000);
-      return;
-    }
+    // todo: potentially an alert here
+    // if (hasAlreadySubmitted) {
+    //   showAlertOnAlreadySubmitted = true;
+    //   setTimeout(() => showAlertOnAlreadySubmitted = false, 3000);
+    //   return;
+    // }
     if (city === null || name.length === 0) {
       showAlertOnSave = true;
       setTimeout(() => showAlertOnSave = false, 1500);
@@ -295,6 +296,7 @@
                 placeholder="City"
                 bind:value={query} 
                 on:input={handleInputCity} 
+                disabled={hasAlreadySubmitted}
               />
               {#if results.length > 0}
                 <div class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
@@ -329,7 +331,7 @@
           </div>
           <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt class="text-sm font-medium leading-6 text-gray-300">
-              Your private key -
+              Your private key
             </dt>
             <dd>
               <p
