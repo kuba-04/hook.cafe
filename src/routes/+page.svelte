@@ -10,7 +10,6 @@
     decryptKey,
     encryptKey,
     getUserProfile,
-    getUserProfilePubKey,
     recreateSigner,
     setProfileData,
   } from "$lib/authUtils";
@@ -43,6 +42,7 @@
 
   let showAlertOnSelectUnsubmitted = false;
   let showAlertOnSubmittingInvalid = false;
+  let showAlertOnAlreadySubmitted = false;
   let showAlertOnSubmittingSuccess = false;
   let showAlertOnSelectingSelf = false;
 
@@ -343,28 +343,34 @@
   let isMessageValid;
   let message = {};
 
+  function parseInputWord(word) {
+    let parsedWord = word.trim();
+    const cut = parsedWord.includes(" ") ? parsedWord.indexOf(" ") : 20;
+    return parsedWord.substring(0, cut);
+  }
+
   function onChangeWord1() {
-    message.word1 = inputWord1;
+    message.word1 = parseInputWord(inputWord1);
     validateMessage();
   }
 
   function onChangeWord2() {
-    message.word2 = inputWord2;
+    message.word2 = parseInputWord(inputWord2);
     validateMessage();
   }
 
   function onChangeWord3() {
-    message.word3 = inputWord3;
+    message.word3 = parseInputWord(inputWord3);
     validateMessage();
   }
 
   function onChangeWord4() {
-    message.word4 = inputWord4;
+    message.word4 = parseInputWord(inputWord4);
     validateMessage();
   }
 
   function onChangeLocation() {
-    message.location = inputLocation;
+    message.location = inputLocation.substring(0, 20);
     validateMessage();
   }
 
@@ -378,7 +384,6 @@
     timeFrom = event.detail.startTime;
     timeTo = event.detail.endTime;
   }
-
   function validateMessage() {
     isMessageValid =
       inputWord1.trim().length > 0 &&
@@ -389,13 +394,12 @@
   }
 
   async function handleSubmit() {
-    const currentUserKey = (await signer.user()).pubkey;
-    const alreadyAdded = messages.map(e => e.pubkey).includes(currentUserKey);
-    if (alreadyAdded) {
-      alert("You can add only one request per day!"); // todo replace
+    if (submitted) {
+      showAlertOnAlreadySubmitted = true;
+      setTimeout(() => showAlertOnAlreadySubmitted = false, 1500);
       return;
     }
-    
+
     let loading = true;
     message.minPrice = minValue.toString();
     message.maxPrice = maxValue.toString();
@@ -489,7 +493,7 @@
               Building {city?.cityName} group<span class="animate-ping">...</span>
             </p>
           </div>
-        {:else if submitted}
+        {:else if submitted && city.cityName}
           <div class="absolute top-5 left-10 items-center">
             <p class="text-lg text-gray-300">
               Hello {city?.cityName} people!<br class="md:hide"> 
@@ -614,13 +618,25 @@
   
             <!-- alert -->
             {#if showAlertOnSubmittingInvalid}
-              <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
+              <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 bg-gray-500 dark:text-yellow-300" role="alert">
                 <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
                 </svg>
                 <span class="sr-only">Info</span>
                 <span class="text-lg font-semibold leading-6 text-white">
                   Please fill out all the fields!
+                </span>
+              </div>
+            {/if}
+            <!-- alert -->
+            {#if showAlertOnAlreadySubmitted}
+              <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 bg-gray-500 dark:text-yellow-300" role="alert">
+                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                </svg>
+                <span class="sr-only">Info</span>
+                <span class="text-lg font-semibold leading-6 text-white">
+                  You already sent your message!
                 </span>
               </div>
             {/if}
@@ -662,13 +678,13 @@
 
         <!-- alert -->
         {#if showAlertOnSubmittingSuccess}
-          <div class="flex items-center p-4 mb-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-gray-800 dark:text-green-400" role="alert">
+          <div class="flex items-center p-4 mb-4 text-sm text-green-800 rounded-lg bg-gray-800 dark:text-green-400" role="alert">
             <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
             </svg>
             <span class="sr-only">Info</span>
             <div class="text-lg font-semibold leading-6 text-white">
-              <span class="font-medium">Great!</span> Now select one person to join your table 🙂
+              <span class="font-medium">Great!</span> Now select one person to join your table, or wait until they appear 🙂
             </div>
             <button on:click={() => showAlertOnSubmittingSuccess = false} type="button" class="ms-auto -mx-1.5 -my-1.5 bg-blue-50 text-blue-500 rounded-lg focus:ring-2 focus:ring-blue-400 p-1.5 hover:bg-blue-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700" data-dismiss-target="#alert-1" aria-label="Close">
               <span class="sr-only">Close</span>
@@ -697,14 +713,15 @@
                 </span>
               </div>
             {/if}
+            <!-- alert -->
             {#if showAlertOnSelectingSelf}
-              <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
+              <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300" role="alert">
                 <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
                 </svg>
                 <span class="sr-only">Info</span>
                 <span class="text-lg font-semibold leading-6 text-white">
-                  Don't be a narcist! Please select someone else!
+                  Don't be a narcist! Choose someone else this time!
                 </span>
               </div>
             {/if}

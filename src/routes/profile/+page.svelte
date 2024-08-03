@@ -122,7 +122,7 @@
         <button
           on:click={() => goto("/")}
           type="button"
-          class="text-gray-300 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-blue-300 dark:focus:ring-gray-800"
+          class="text-gray-300 bg-gray-100 hover:bg-blue-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-blue-300 dark:focus:ring-gray-800"
         >
           <svg
             fill="#000000"
@@ -151,7 +151,7 @@
         <button
           on:click={save}
           type="button"
-          class="text-gray-300 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-green-200 dark:focus:ring-gray-800"
+          class="text-gray-300 bg-gray-100 hover:bg-green-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-green-200 dark:focus:ring-gray-800"
         >
           <svg
             height="20px"
@@ -176,7 +176,7 @@
         <button
           on:click={logout}
           type="button"
-          class="text-gray-300 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-red-300 dark:focus:ring-gray-800"
+          class="text-gray-300 bg-gray-100 hover:bg-red-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-red-300 dark:focus:ring-gray-800"
         >
           <svg
             height="20px"
@@ -203,8 +203,19 @@
         </p>
       </div> -->
       <!-- alert -->
-    {#if showAlertOnSave}
+    <!-- {#if showAlertOnSave}
       <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
+        <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+        </svg>
+        <span class="sr-only">Info</span>
+        <span class="text-lg font-semibold leading-6 text-white">
+          Some fields are not filled!
+        </span>
+      </div>
+    {/if} -->
+    {#if showAlertOnSave}
+      <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300" role="alert">
         <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
           <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
         </svg>

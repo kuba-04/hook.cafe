@@ -24,7 +24,7 @@
 
   const onUpdateName = () => {
     name = name;
-        isNameValid = name.length >= 4;
+        isNameValid = name.length >= 3;
   };
 
   const handleRegister = async () => {
