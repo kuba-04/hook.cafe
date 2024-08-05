@@ -1,7 +1,7 @@
 <script>
   import isHotkey from "is-hotkey";
   import MessageView from "./ChatMessage.svelte";
-  import { tick, createEventDispatcher, onMount } from "svelte";
+  import { tick, onMount } from "svelte";
   import { RELAY_URL } from "$lib/Env";
   import { NDKEvent } from "@nostr-dev-kit/ndk";
   import { v4 as uuid } from "uuid";
@@ -11,7 +11,7 @@
   let message;
   let messages = [];
   let messageContainerRef;
-//   let dispatch = createEventDispatcher();
+  //   let dispatch = createEventDispatcher();
   export let signerKey;
   export let username;
   export let channelId;
@@ -20,24 +20,25 @@
 
   onMount(async () => {
     subscription = ndk.subscribe([KIND_42_FILTER], {
-		closeOnEose: false,
+      closeOnEose: false,
     });
-	
+
     subscription.on("event", async (event) => {
-		const allowedChannelId = event.tagValue('e');
-		if (allowedChannelId === channelId) {
-			pushMessage(event.content, event.pubkey === signerKey);
-      scrollToEnd();
-		}
+      const allowedChannelId = event.tagValue("e");
+      if (allowedChannelId === channelId) {
+        pushMessage(event.content, event.pubkey === signerKey);
+        scrollToEnd();
+      }
     });
     if (messages.length === 0) {
       ndk.fetchEvents([KIND_42_FILTER]).then((events) => {
         for (const event of events) {
-        const allowedChannelId = event.tagValue('e');
-        if (allowedChannelId === channelId) {
-          pushMessage(event.content, event.pubkey === signerKey);
-          scrollToEnd();
-        }}
+          const allowedChannelId = event.tagValue("e");
+          if (allowedChannelId === channelId) {
+            pushMessage(event.content, event.pubkey === signerKey);
+            scrollToEnd();
+          }
+        }
       });
     }
   });
@@ -65,13 +66,13 @@
       content: parsed.content,
       username: parsed.username,
       timestamp: parsed.timestamp,
-	  isOwned: isOwned
+      isOwned: isOwned,
     });
     if (messages.some((m) => m.id === message.id)) {
       return;
     }
     messages = [...messages, message];
-	  scrollToEnd();
+    scrollToEnd();
   }
 
   function scrollToEnd() {
@@ -89,7 +90,7 @@
         id: uuid(),
         username: username,
         content: message,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
       ndkEvent.tags = [["e", channelId, RELAY_URL, "root"]];
       await ndkEvent.publish().then((_) => {
@@ -99,10 +100,10 @@
       });
     }
   }
-
 </script>
 
-<div id="message-box"
+<div
+  id="message-box"
   class="message-box rounded-lg border border-radius mx-2 my-2 flex flex-col justify-between overflow-y-scroll no-scrollbar"
 >
   <div class=" chat-header border-b px-4 py-1">
@@ -117,7 +118,7 @@
       class="w-full chat-messages gap-y-2 overflow-auto flex flex-col justify-end mb-5"
     >
       {#each messages as message}
-        <MessageView {...message}/>
+        <MessageView {...message} />
       {/each}
     </div>
   </div>
@@ -131,11 +132,27 @@
         class="border rounded-lg px-2 w-full h-full bg-gray-100"
       />
     </span>
-<!-- text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 -->
-    <button on:click={handleSend} type="button" class="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800">
-        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
-          <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
-        </svg>
+    <!-- text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 -->
+    <button
+      on:click={handleSend}
+      type="button"
+      class="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+    >
+      <svg
+        class="w-5 h-5"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 14 10"
+      >
+        <path
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M1 5h12m0 0L9 1m4 4L9 9"
+        />
+      </svg>
       <span class="sr-only">Icon description</span>
     </button>
 
@@ -175,11 +192,11 @@
     height: 300px;
   }
   .no-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-    /* Hide scrollbar for IE, Edge and Firefox */
-    .no-scrollbar {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
 </style>
