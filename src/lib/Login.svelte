@@ -1,5 +1,5 @@
 <script>
-  import { recreateSigner, register } from './authUtils';
+  import { createNewSigner, recreateSigner } from './authUtils';
   import { createEventDispatcher } from 'svelte';
   import { getRandomAvatar } from './avatars';
   import citiesData from './cities.json';
@@ -30,9 +30,9 @@
   const handleRegister = async () => {
     loading = true;
     try {
-      register();
+      const privKey = createNewSigner();
       let avatar = getRandomAvatar() 
-      dispatchRegisteredEvent({name, avatar, city});
+      dispatchRegisteredEvent({name, avatar, city, privKey});
       localStorage.setItem('user', name );
     } catch (error) {
       if (error instanceof Error) {
@@ -65,8 +65,8 @@
     dispatch('login', { privKey });
   }
 
-  function dispatchRegisteredEvent({name, avatar, city}) {
-    dispatch('register', { name, avatar, city });
+  function dispatchRegisteredEvent({name, avatar, city, privKey}) {
+    dispatch('register', { name, avatar, city, privKey });
   }
 
   function searchCities(query) {

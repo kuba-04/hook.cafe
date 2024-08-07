@@ -8,8 +8,6 @@
   import { RELAY_URL } from "../lib/Env";
   import NDK, { NDKEvent } from "@nostr-dev-kit/ndk";
   import {
-    decryptKey,
-    encryptKey,
     getUserProfile,
     recreateSigner,
     setProfileData,
@@ -17,6 +15,7 @@
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
   import Chat from "$lib/Chat/Chat.svelte";
+  import { page } from "$app/stores";
 
   const PROFILE_FILTER = { kinds: [0] };
   const KIND_1_FILTER = { kinds: [1] };
@@ -28,7 +27,7 @@
   let name = "";
   let city = null;
   let avatar = "";
-  let privKey = "";
+  let privKey = null;
   let pubKey = "";
   let signer;
   let subscription;
@@ -62,18 +61,17 @@
   let showAlertOnAlreadySubmitted = false;
   let showAlertOnSubmittingSuccess = false;
   let showAlertOnSelectingSelf = false;
+  let showAlertOnPageReload = false;
 
   async function handleRegister(event) {
     name = event.detail.name;
     city = event.detail.city;
     avatar = event.detail.avatar;
-    showModal = false;
-
-    // TODO we can take the key from dispatched event and use here
-    privKey = decryptKey(localStorage.getItem("secure"));
+    privKey = event.detail.privKey;
 
     if (privKey) {
       isAuthenticated = true;
+      showModal = false;
     }
 
     signer = recreateSigner(privKey);
@@ -103,7 +101,6 @@
 
   async function handleLogin(event) {
     privKey = event.detail.privKey;
-    localStorage.setItem("secure", encryptKey(privKey)); // todo
     signer = recreateSigner(privKey);
     ndk = new NDK({
       explicitRelayUrls: [RELAY_URL],
@@ -113,7 +110,7 @@
     isAuthenticated = true;
     showModal = false;
 
-    pubKey = (await signer.user()).npub;
+    pubKey = (await signer.user()).npub; // todo: pubkey
     const profile = await getUserProfile(ndk, pubKey);
     name = profile.name || "";
     city = profile.city || null;
@@ -141,13 +138,27 @@
     });
   }
 
+  function handleBeforeUnload(event) {
+    showAlertOnPageReload = true;
+    setTimeout(() => showAlertOnPageReload = false, 4000);
+    event.preventDefault();
+  }
+
   onMount(async () => {
-    const storedKey = localStorage.getItem("secure");
-    if (storedKey !== null) {
-      privKey = decryptKey(storedKey);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    const preloadKey = $page.state;
+    if (Object.keys(preloadKey).length === 0) {
+      return;
+    } else {
+      privKey = preloadKey;
+    }
+
+    if (privKey) {
       signer = recreateSigner(privKey);
       isAuthenticated = true;
     } else {
+      isAuthenticated = false;
+      showModal = true;
       return;
     }
     selectedAuthor = localStorage.getItem("selected") || "";
@@ -171,6 +182,12 @@
     } else {
       await initMessages();
     }
+
+    
+
+    // return () => {
+    //   window.removeEventListener('beforeunload', handleBeforeUnload);
+    // };
   });
 
   function isRootNote(event) {
@@ -469,8 +486,14 @@
     }
   }
 
+  // todo remove this
   function decodedKey() {
     return nip19.decode(pubKey).data;
+  }
+
+  function navigateToProfile() {
+    const id = pubKey;
+    goto(`/profile/${id}`, { state: privKey });
   }
 </script>
 
@@ -483,6 +506,29 @@
   <div
     class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"
   >
+  <!-- alert -->
+  {#if showAlertOnPageReload}
+    <div
+      class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300"
+      role="alert"
+    >
+      <svg
+        class="flex-shrink-0 inline w-4 h-4 me-3"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path
+          d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
+        />
+      </svg>
+      <span class="sr-only">Info</span>
+      <span class="text-lg font-semibold leading-6 text-white">
+        Page refresh will log you out. Did you keep your private key safe?
+      </span>
+    </div>
+  {/if}
     <div class="w-full max-w-4xl py-16 sm:py-24 lg:py-32">
       {#if isAuthenticated}
         {#if selectedAuthor.length > 0}
@@ -502,17 +548,19 @@
         {/if}
         <div class="absolute top-0 right-10 h-16">
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
-            <a href="/profile">
+            <button>
               <img
                 class="w-12 h-12 p-1 rounded-full ring-2 hover:ring-0 ring-gray-300 hover:bg-yellow-100"
                 src={avatar}
                 alt="avatar"
-                on:click={() => goto("/profile")}
+                on:click={navigateToProfile}
               />
-            </a>
+            </button>
           </p>
         </div>
       {/if}
+
+      
 
       <div
         class={(submitted || !isAuthenticated) && !chatOpen
@@ -854,13 +902,13 @@
                   </div>
                 </li>
               {/each}
-              {#if messages.length === 4}
+              {#if selectedAuthor.length > 0 && messages.length < 4}
                 <li class="flex justify-between gap-x-3 px-4 py-5">
                   <div class="place-content-center min-w-0 gap-x-4">
-                    <span class="text-gray-200"
-                      >Please wait<span class="text-gray-200 animate-ping"
+                    <span class="text-gray-400"
+                      >Please wait<span class="text-gray-400 animate-ping"
                         >...</span
-                      > We need 4 people to create a group chat ⏳</span
+                      > we need 4 people to create a group chat ⏳</span
                     >
                   </div>
                 </li>

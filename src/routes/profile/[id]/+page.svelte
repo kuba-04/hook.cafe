@@ -1,19 +1,20 @@
 <script>
-  import { decryptKey, getUserProfile, setProfileData } from "$lib/authUtils";
-  import Modal from "../../lib/Modal.svelte";
+  import { getUserProfile, setProfileData } from "$lib/authUtils";
+  import Modal from "../../../lib/Modal.svelte";
   import NDK, { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
   import { RELAY_URL } from "$lib/Env";
   import { goto } from "$app/navigation";
   import { avatars } from "$lib/avatars";
   import PasswordDisplay from "$lib/PasswordDisplay.svelte";
-  import citiesData from "../../lib/cities.json";
+  import citiesData from "../../../lib/cities.json";
+  import { page } from '$app/stores';
 
   let selectedAvatar = "";
   let ndk;
   let name = "";
-  let pubKey = "";
-  let privKey = "";
+  let pubKey;
+  let privKey;
   let avatar = "";
   let showModal = false;
   let showAlertOnSave = false;
@@ -25,7 +26,16 @@
   let city = null;
 
   onMount(async () => {
-    privKey = decryptKey(localStorage.getItem("secure"));
+    pubKey = $page.params.id;
+    if (!pubKey) {
+      console.log("not found")
+      goto("/");
+    }
+    privKey = $page.state;
+    if (!privKey) {
+      console.log("session ends..")
+      goto("/");
+    }
     const signer = new NDKPrivateKeySigner(privKey);
     ndk = new NDK({ explicitRelayUrls: [RELAY_URL], signer });
     await ndk.connect();
@@ -72,7 +82,7 @@
     try {
       const avatar = `${selectedAvatar}`;
       await setProfileData(ndk, name, city, avatar);
-      goto("/");
+      goto("/", {state: privKey});
     } catch (error) {
       console.error("Error saving profile data:", error);
       alert("Failed to save profile data. Please try again.");
@@ -88,6 +98,10 @@
     goto("/");
   }
 
+  function goBack() {
+    goto("/", {state: privKey});
+  }
+
   function searchCities(query) {
     const normalizedQuery = query.toLowerCase().trim();
     results = citiesData
@@ -100,14 +114,12 @@
     query = event.target.value;
     city = null;
     searchCities(query);
-    // dispatchCitySelection('change', { city });
   }
 
   function selectCity(c) {
     city = { cityName: c.name, cityCountry: c.country };
     query = `${c.name}, ${c.country}`;
     results = [];
-    // dispatchCitySelection('change', { city });
   }
 </script>
 
@@ -127,7 +139,6 @@
             />
           </button>
         {/each}
-        <!-- </div> -->
       </div></Modal
     >
   {/if}
@@ -135,7 +146,7 @@
     <nav class="flex p-6 justify-center" aria-label="Global">
       <div>
         <button
-          on:click={() => goto("/")}
+          on:click={goBack}
           type="button"
           class="text-gray-300 bg-gray-100 hover:bg-blue-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center me-2 dark:bg-gray-300 dark:hover:bg-blue-300 dark:focus:ring-gray-800"
         >
@@ -212,23 +223,6 @@
           >
         </button>
       </div>
-      <!-- <div class="absolute top-0 right-0 h-16 w-16">
-        <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
-          <button on:click={logout}>Logout</button>
-        </p>
-      </div> -->
-      <!-- alert -->
-      <!-- {#if showAlertOnSave}
-      <div class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300" role="alert">
-        <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
-        </svg>
-        <span class="sr-only">Info</span>
-        <span class="text-lg font-semibold leading-6 text-white">
-          Some fields are not filled!
-        </span>
-      </div>
-    {/if} -->
       {#if showAlertOnSave}
         <div
           class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300"

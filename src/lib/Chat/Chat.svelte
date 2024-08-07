@@ -11,7 +11,6 @@
   let message;
   let messages = [];
   let messageContainerRef;
-  //   let dispatch = createEventDispatcher();
   export let signerKey;
   export let username;
   export let channelId;
@@ -76,7 +75,6 @@
   }
 
   function scrollToEnd() {
-    // document.getElementById("message-box")?.scrollTo({ top: 100000, behavior: "smooth" })
     if (messageContainerRef) {
       messageContainerRef.scrollTop = messageContainerRef.scrollHeight;
     }
@@ -132,7 +130,6 @@
         class="border rounded-lg px-2 w-full h-full bg-gray-100"
       />
     </span>
-    <!-- text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 -->
     <button
       on:click={handleSend}
       type="button"
@@ -155,34 +152,6 @@
       </svg>
       <span class="sr-only">Icon description</span>
     </button>
-
-    <!-- <button
-      on:click={handleSend}
-      class="rounded-lg border flex px-3 items-center mx-1 justify-center "
-    >
-      <span class="text-gray-400 font-bold">
-        <svg
-          width="24px"
-          height="24px"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          ><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g
-            id="SVGRepo_tracerCarrier"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ></g><g id="SVGRepo_iconCarrier">
-            <path
-              d="M6 12H18M18 12L13 7M18 12L13 17"
-              stroke="#ffffff"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path>
-          </g></svg
-        >
-      </span>
-    </button> -->
   </div>
 </div>
 
