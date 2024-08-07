@@ -16,6 +16,11 @@
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
   import Chat from "$lib/Chat/Chat.svelte";
   import { page } from "$app/stores";
+  import OnPageLoadAlert from "$lib/alerts/OnPageLoadAlert.svelte";
+  import OnSubmitInvalidAlert from "$lib/alerts/OnSubmitInvalidAlert.svelte";
+  import OnAlreadySubmittedAlert from "$lib/alerts/OnAlreadySubmittedAlert.svelte";
+  import OnSubmittingSuccessAlert from "$lib/alerts/OnSubmittingSuccessAlert.svelte";
+  import OnSelectingSelfAlert from "$lib/alerts/OnSelectingSelfAlert.svelte";
 
   const PROFILE_FILTER = { kinds: [0] };
   const KIND_1_FILTER = { kinds: [1] };
@@ -506,29 +511,11 @@
   <div
     class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"
   >
-  <!-- alert -->
-  {#if showAlertOnPageReload}
-    <div
-      class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300"
-      role="alert"
-    >
-      <svg
-        class="flex-shrink-0 inline w-4 h-4 me-3"
-        aria-hidden="true"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="currentColor"
-        viewBox="0 0 20 20"
-      >
-        <path
-          d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
-        />
-      </svg>
-      <span class="sr-only">Info</span>
-      <span class="text-lg font-semibold leading-6 text-white">
-        Page refresh will log you out. Did you keep your private key safe?
-      </span>
-    </div>
-  {/if}
+    <!-- alert -->
+    {#if showAlertOnPageReload}
+      <OnPageLoadAlert />
+    {/if}
+
     <div class="w-full max-w-4xl py-16 sm:py-24 lg:py-32">
       {#if isAuthenticated}
         {#if selectedAuthor.length > 0}
@@ -564,8 +551,8 @@
 
       <div
         class={(submitted || !isAuthenticated) && !chatOpen
-          ? "mx-auto grid max-w-2xl grid-cols-1 gap-x-8  lg:max-w-none lg:grid-cols-1"
-          : "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-2"}
+          ? "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-1"
+          : "mx-auto grid max-w-2xl grid-cols-1 gap-x-20 lg:max-w-none lg:grid-cols-2"}
       >
         <!-- form -->
         {#if !submitted}
@@ -674,49 +661,11 @@
 
               <!-- alert -->
               {#if showAlertOnSubmittingInvalid}
-                <div
-                  class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 bg-gray-500 dark:text-yellow-300"
-                  role="alert"
-                >
-                  <svg
-                    class="flex-shrink-0 inline w-4 h-4 me-3"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
-                    />
-                  </svg>
-                  <span class="sr-only">Info</span>
-                  <span class="text-lg font-semibold leading-6 text-white">
-                    Please fill out all the fields!
-                  </span>
-                </div>
+                <OnSubmitInvalidAlert />
               {/if}
               <!-- alert -->
               {#if showAlertOnAlreadySubmitted}
-                <div
-                  class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 bg-gray-500 dark:text-yellow-300"
-                  role="alert"
-                >
-                  <svg
-                    class="flex-shrink-0 inline w-4 h-4 me-3"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
-                    />
-                  </svg>
-                  <span class="sr-only">Info</span>
-                  <span class="text-lg font-semibold leading-6 text-white">
-                    You already sent your message!
-                  </span>
-                </div>
+                <OnAlreadySubmittedAlert />
               {/if}
 
               <div>
@@ -757,51 +706,7 @@
 
         <!-- alert -->
         {#if showAlertOnSubmittingSuccess}
-          <div
-            class="flex items-center p-4 mb-4 text-sm text-green-800 rounded-lg bg-gray-800 dark:text-green-400"
-            role="alert"
-          >
-            <svg
-              class="flex-shrink-0 inline w-4 h-4 me-3"
-              aria-hidden="true"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
-              />
-            </svg>
-            <span class="sr-only">Info</span>
-            <div class="text-lg font-semibold leading-6 text-white">
-              <span class="font-medium">Great!</span> Now select one person to join
-              your table, or wait until they appear 🙂
-            </div>
-            <button
-              on:click={() => (showAlertOnSubmittingSuccess = false)}
-              type="button"
-              class="ms-auto -mx-1.5 -my-1.5 bg-blue-50 text-blue-500 rounded-lg focus:ring-2 focus:ring-blue-400 p-1.5 hover:bg-blue-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700"
-              data-dismiss-target="#alert-1"
-              aria-label="Close"
-            >
-              <span class="sr-only">Close</span>
-              <svg
-                class="w-3 h-3"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 14 14"
-              >
-                <path
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-                />
-              </svg>
-            </button>
-          </div>
+          <OnSubmittingSuccessAlert on:showAlert={() => showAlertOnSubmittingSuccess = false} />
         {/if}
 
         {#await initConnectedMessages}
@@ -834,26 +739,7 @@
             {/if}
             <!-- alert -->
             {#if showAlertOnSelectingSelf}
-              <div
-                class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300"
-                role="alert"
-              >
-                <svg
-                  class="flex-shrink-0 inline w-4 h-4 me-3"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
-                  />
-                </svg>
-                <span class="sr-only">Info</span>
-                <span class="text-lg font-semibold leading-6 text-white">
-                  Don't be a narcist! Choose someone else this time!
-                </span>
-              </div>
+              <OnSelectingSelfAlert />
             {/if}
             <ul role="list" class="divide-y divide-gray-100 mt-5">
               {#each messages as message (message.id)}
