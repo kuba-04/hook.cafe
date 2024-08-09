@@ -1,5 +1,5 @@
 <div
-  class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300"
+class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 text-yellow-300"
   role="alert"
 >
   <svg

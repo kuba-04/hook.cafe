@@ -21,9 +21,10 @@
   import OnAlreadySubmittedAlert from "$lib/alerts/OnAlreadySubmittedAlert.svelte";
   import OnSubmittingSuccessAlert from "$lib/alerts/OnSubmittingSuccessAlert.svelte";
   import OnSelectingSelfAlert from "$lib/alerts/OnSelectingSelfAlert.svelte";
+  import OnSelectUnsubmittedAlert from "$lib/alerts/OnSelectUnsubmittedAlert.svelte";
 
   const PROFILE_FILTER = { kinds: [0] };
-  const KIND_1_FILTER = { kinds: [1] };
+  const KIND_1_FILTER = { kinds: [1], since: getBODTimestamp(), until: getEODTimestamp() };
   const KIND_40_FILTER = { kinds: [40] };
 
   let ndk;
@@ -131,7 +132,7 @@
 
   async function loadOwnEvents() {
     const currentUserKey = (await signer.user()).pubkey; // todo: refactor all those currentUserKeys
-    const fetchSelectedFilter = { kinds: [1], authors: [currentUserKey] };
+    const fetchSelectedFilter = { kinds: [1], authors: [currentUserKey], since: getBODTimestamp(), until: getEODTimestamp() };
     const submittedEvents = await ndk.fetchEvents(fetchSelectedFilter);
     submittedEvents.forEach((e) => {
       if (isRootNote(e)) {
@@ -147,6 +148,18 @@
     showAlertOnPageReload = true;
     setTimeout(() => showAlertOnPageReload = false, 4000);
     event.preventDefault();
+  }
+  
+  function getBODTimestamp() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today.getTime().toString().substring(0, 10);
+  }
+
+  function getEODTimestamp() {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return today.getTime().toString().substring(0, 10);
   }
 
   onMount(async () => {
@@ -187,12 +200,6 @@
     } else {
       await initMessages();
     }
-
-    
-
-    // return () => {
-    //   window.removeEventListener('beforeunload', handleBeforeUnload);
-    // };
   });
 
   function isRootNote(event) {
@@ -234,7 +241,7 @@
   async function initConnectedMessages() {
     // 1. selected and its parent
     await ndk
-      .fetchEvents({ kinds: [1], authors: [selectedAuthor] })
+      .fetchEvents({ kinds: [1], authors: [selectedAuthor], since: getBODTimestamp(), until: getEODTimestamp() })
       .then((notes) =>
         notes.forEach((e) => {
           // selected
@@ -280,7 +287,7 @@
         // and we have to add the parent's note:
         const selectedParentKey = event.tagValue("p");
         await ndk
-          .fetchEvents({ kinds: [1], authors: [selectedParentKey] })
+          .fetchEvents({ kinds: [1], authors: [selectedParentKey], since: getBODTimestamp(), until: getEODTimestamp() })
           .then((p) =>
             p.forEach((note) => {
               if (isRootNote(note)) {
@@ -715,27 +722,9 @@
         {:then _}
           <!-- list -->
           <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
+            <!-- alert -->
             {#if showAlertOnSelectUnsubmitted}
-              <div
-                class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 dark:bg-gray-500 dark:text-yellow-300"
-                role="alert"
-              >
-                <svg
-                  class="flex-shrink-0 inline w-4 h-4 me-3"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
-                  />
-                </svg>
-                <span class="sr-only">Info</span>
-                <span class="text-lg font-semibold leading-6 text-white">
-                  Before selecting, submit your own request!
-                </span>
-              </div>
+              <OnSelectUnsubmittedAlert />
             {/if}
             <!-- alert -->
             {#if showAlertOnSelectingSelf}

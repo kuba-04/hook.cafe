@@ -15,6 +15,6 @@ class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray
   </svg>
   <span class="sr-only">Info</span>
   <span class="text-lg font-semibold leading-6 text-white">
-    Don't be a narcist! Choose someone else this time!
+    Before selecting, submit your own request!
   </span>
 </div>
