@@ -186,7 +186,7 @@
       signer: signer,
     });
 
-    await ndk.connect();
+    await ndk.connect().then(_ => console.log("connected"));
     await loadOwnEvents();
 
     pubKey = (await signer.user()).npub;
@@ -568,7 +568,7 @@
               <h2
                 class="text-3xl font-bold tracking-tight text-white sm:text-4xl"
               >
-                What do you want to talk about today?
+                Enjoy meal with similar people around you
               </h2>
               <p class="mt-4 text-lg leading-8 text-gray-300">Your 4 words:</p>
               <div class="mt-6 flex max-w-md gap-x-4">

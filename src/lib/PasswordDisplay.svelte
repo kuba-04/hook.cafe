@@ -50,7 +50,7 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.2em;
+    font-size: 16px;
     padding: 5px;
   }
 </style>

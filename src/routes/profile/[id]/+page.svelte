@@ -20,6 +20,7 @@
   let showAlertOnSave = false;
   let hasAlreadySubmitted = false;
   let showAlertOnAlreadySubmitted = false;
+  let showAlertOnCopyNpub = false;
 
   let query = "";
   let results = [];
@@ -120,6 +121,17 @@
     city = { cityName: c.name, cityCountry: c.country };
     query = `${c.name}, ${c.country}`;
     results = [];
+  }
+
+  function copyNpub() {
+    navigator.clipboard
+      .writeText(pubKey)
+      .then(() => {
+        showAlertOnCopyNpub = true;
+      })
+      .catch((err) => {
+        console.error("Failed to copy: ", err);
+      }).finally(() => setTimeout(() => showAlertOnCopyNpub = false, 1500));
   }
 </script>
 
@@ -318,18 +330,18 @@
                   class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm"
                 >
                   {#each results as city}
-                    <div
+                    <button
                       class="cursor-pointer select-none relative py-2 pl-3 pr-9 text-gray-900 hover:bg-teal-600 hover:text-white"
                       on:click={() => selectCity(city)}
                     >
                       {city.name}, {city.country}
-                    </div>
+                    </button>
                   {/each}
                 </div>
               {/if}
             </div>
           </div>
-          <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+          <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0 npub-container">
             <dt class="text-sm font-medium leading-6 text-gray-300">
               Your public key
             </dt>
@@ -345,6 +357,16 @@
                 {pubKey}
               </p>
             </dd>
+            <div class="left-10 flex items-center">
+              {#if !showAlertOnCopyNpub}
+                <button on:click={copyNpub} class="copy-button text-sm text-gray-300"> copy </button>
+              {/if}
+              {#if showAlertOnCopyNpub}
+                <div class="text-sm text-blue-800 rounded-lg dark:text-blue-400" role="alert">
+                  <button class="font-medium">copied!</button>
+                </div>
+              {/if}
+            </div>
           </div>
           <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt class="text-sm font-medium leading-6 text-gray-300">
@@ -383,3 +405,13 @@
     </div>
   </div>
 </main>
+
+<style>
+  .copy-button {
+    /* background: none; */
+    /* border: none; */
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px;
+  }
+</style>
