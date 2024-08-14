@@ -390,12 +390,11 @@
           <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt class="text-sm font-medium leading-6 text-gray-300">Avatar</dt>
             <dd>
-              <button>
+              <button on:click={showAvatars}>
                 <img
                   class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-gray-100"
                   src={avatar}
                   alt="avatar"
-                  on:click={showAvatars}
                 />
               </button>
             </dd>

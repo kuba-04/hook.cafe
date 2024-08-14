@@ -22,7 +22,7 @@
     <slot />
     <div class="absolute top-0 right-0 h-16 w-16">
       <p class="mt-4 text-lg leading-8 text-gray-600 items-end">
-        <button autofocus on:click={() => dialog.close()} >close</button>
+        <button on:click={() => dialog.close()} >close</button>
       </p>
     </div>
   </div>

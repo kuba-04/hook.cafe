@@ -1,5 +1,4 @@
 <script>
-  export let id;
   export let content;
   export let timestamp;
   export let username;

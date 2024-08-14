@@ -177,9 +177,9 @@
               {#if results.length > 0}
                 <div class="autocomplete-results">
                   {#each results as city}
-                    <div class="p-2 cursor-pointer hover:bg-gray-200" on:click={() => selectCity(city)}>
+                    <button class="p-2 cursor-pointer hover:bg-gray-200" on:click={() => selectCity(city)}>
                       {city.name}, {city.country}
-                    </div>
+                    </button>
                   {/each}
                 </div>
               {/if}

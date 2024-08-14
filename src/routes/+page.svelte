@@ -542,12 +542,11 @@
         {/if}
         <div class="absolute top-0 right-10 h-16">
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
-            <button>
+            <button on:click={navigateToProfile}>
               <img
                 class="w-12 h-12 p-1 rounded-full ring-2 hover:ring-0 ring-gray-300 hover:bg-yellow-100"
                 src={avatar}
                 alt="avatar"
-                on:click={navigateToProfile}
               />
             </button>
           </p>
@@ -733,9 +732,9 @@
             <ul role="list" class="divide-y divide-gray-100 mt-5">
               {#each messages as message (message.id)}
                 <li
-                  on:click={select(message)}
                   class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
                 >
+                <button on:click={select(message)}>
                   <div class="flex min-w-0 gap-x-4">
                     <div class="flex min-w-10 items-center">
                       <img
@@ -756,6 +755,7 @@
                       </p>
                     </div>
                   </div>
+                </button>
                   <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
                     <div class="text-sm leading-6 text-gray-200">
                       {parseEventContent(message).parsedContent.location}
