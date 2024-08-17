@@ -3,9 +3,9 @@
   import Modal from "../../../lib/Modal.svelte";
   import NDK, { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
-  import { RELAY_URL } from "$lib/Env";
+  import { env } from '$env/dynamic/public';
   import { goto } from "$app/navigation";
-  import { avatars } from "$lib/avatars";
+  import { getAllAvatars } from "$lib/avatars";
   import PasswordDisplay from "$lib/PasswordDisplay.svelte";
   import citiesData from "../../../lib/cities.json";
   import { page } from '$app/stores';
@@ -25,8 +25,10 @@
   let query = "";
   let results = [];
   let city = null;
+  let avatars = [];
 
   onMount(async () => {
+    avatars = getAllAvatars();
     pubKey = $page.params.id;
     if (!pubKey) {
       console.log("not found")
@@ -38,7 +40,7 @@
       goto("/");
     }
     const signer = new NDKPrivateKeySigner(privKey);
-    ndk = new NDK({ explicitRelayUrls: [RELAY_URL], signer });
+    ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
     await ndk.connect();
 
     const user = await signer.user();

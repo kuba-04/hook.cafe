@@ -2,7 +2,8 @@
   import isHotkey from "is-hotkey";
   import MessageView from "./ChatMessage.svelte";
   import { tick, onMount } from "svelte";
-  import { RELAY_URL } from "$lib/Env";
+  // import { RELAY_URL } from "$lib/Env";
+  import { env } from '$env/dynamic/public';
   import { NDKEvent } from "@nostr-dev-kit/ndk";
   import { v4 as uuid } from "uuid";
 
@@ -90,7 +91,7 @@
         content: message,
         timestamp: new Date(),
       });
-      ndkEvent.tags = [["e", channelId, RELAY_URL, "root"]];
+      ndkEvent.tags = [["e", channelId, env.PUBLIC_RELAY_URL, "root"]];
       await ndkEvent.publish().then((_) => {
         message = "";
         tick();

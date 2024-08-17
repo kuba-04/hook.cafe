@@ -1,38 +1,24 @@
-# create-svelte
+# Mezzely
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+//todo
 
-## Creating a project
+## Running locally
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
+### a) dev mode
+It is recommended to test with locally running relay. Then create `.env` file with relay url:
 ```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
+PUBLIC_RELAY_URL=ws://127.0.0.1:8080
+```
+Once you've installed dependencies with `npm install`, start dev server:
 ```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
-
-## Building
-
-To create a production version of your app:
-
+### b) docker
+If you don't want to make any changes you can just build the app and run in docker:
 ```bash
-npm run build
+docker build -t mezzely .
+docker run --name mezzely -p 3000:3000 mezzely
+
+# or you can pass relay URL:
+docker run --name mezzely -e PUBLIC_RELAY_URL=wss://your-nostr-relay.com -p 3000:3000 mezzely
 ```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.

@@ -1,0 +1,102 @@
+[
+    {
+        "name": "bear",
+        "path": "/images/avatars/bear.png"
+    },
+    {
+        "name": "bearTeddy",
+        "path": "/images/avatars/bear-teddy.png"
+    },
+    {
+        "name": "birdSing",
+        "path": "/images/avatars/bird-sing.png"
+    },
+    {
+        "name": "bird",
+        "path": "/images/avatars/bird.png"
+    },
+    {
+        "name": "bird2",
+        "path": "/images/avatars/bird2.png"
+    },
+    {
+        "name": "cat",
+        "path": "/images/avatars/cat.png"
+    },
+    {
+        "name": "crab",
+        "path": "/images/avatars/crab.png"
+    },
+    {
+        "name": "crocodile",
+        "path": "/images/avatars/crocodile.png"
+    },
+    {
+        "name": "dino",
+        "path": "/images/avatars/dino.png"
+    },
+    {
+        "name": "dogBig",
+        "path": "/images/avatars/dog-big.png"
+    },
+    {
+        "name": "dogLittle",
+        "path": "/images/avatars/dog-little.png"
+    },
+    {
+        "name": "dog1",
+        "path": "/images/avatars/dog1.png"
+    },
+    {
+        "name": "dolphin",
+        "path": "/images/avatars/dolphin.png"
+    },
+    {
+        "name": "dolphinFun",
+        "path": "/images/avatars/dolphin-fun.png"
+    },
+    {
+        "name": "elephant",
+        "path": "/images/avatars/elephant.png"
+    },
+    {
+        "name": "elephant2",
+        "path": "/images/avatars/elephant2.png"
+    },
+    {
+        "name": "fishGold",
+        "path": "/images/avatars/fish-gold.png"
+    },
+    {
+        "name": "giraffe",
+        "path": "/images/avatars/giraffe.png"
+    },
+    {
+        "name": "lion",
+        "path": "/images/avatars/lion.png"
+    },
+    {
+        "name": "monkey",
+        "path": "/images/avatars/monkey.png"
+    },
+    {
+        "name": "mosquito",
+        "path": "/images/avatars/mosquito.png"
+    },
+    {
+        "name": "mouse",
+        "path": "/images/avatars/mouse.png"
+    },
+    {
+        "name": "panda",
+        "path": "/images/avatars/panda.png"
+    },
+    {
+        "name": "penguin",
+        "path": "/images/avatars/penguin.png"
+    },
+    {
+        "name": "tiger",
+        "path": "/images/avatars/tiger.png"
+    }
+]

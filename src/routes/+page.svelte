@@ -5,7 +5,7 @@
   import Login from "$lib/Login.svelte";
   import Slider from "../lib/Slider.svelte";
   import { goto } from "$app/navigation";
-  import { RELAY_URL } from "../lib/Env";
+  import { env } from '$env/dynamic/public';
   import NDK, { NDKEvent } from "@nostr-dev-kit/ndk";
   import {
     getUserProfile,
@@ -83,7 +83,7 @@
     signer = recreateSigner(privKey);
 
     ndk = new NDK({
-      explicitRelayUrls: [RELAY_URL],
+      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
       signer: signer,
     });
 
@@ -109,7 +109,7 @@
     privKey = event.detail.privKey;
     signer = recreateSigner(privKey);
     ndk = new NDK({
-      explicitRelayUrls: [RELAY_URL],
+      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
       signer: signer,
     });
     await ndk.connect();
@@ -182,7 +182,7 @@
     selectedAuthor = localStorage.getItem("selected") || "";
 
     ndk = new NDK({
-      explicitRelayUrls: [RELAY_URL],
+      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
       signer: signer,
     });
 
@@ -467,14 +467,14 @@
         chatOpen = true;
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
-        console.log("creating a new channel..");
+        console.log("creating channel..");
         let channelContent = {};
         const ndkEvent = new NDKEvent(ndk);
         ndkEvent.kind = 40;
 
         channelContent.name = city.cityName + "_group";
         channelContent.about = "let's meet in real life!";
-        channelContent.relays = RELAY_URL;
+        channelContent.relays = env.PUBLIC_RELAY_URL;
         ndkEvent.content = JSON.stringify(channelContent);
 
         ndkEvent.publish().then((ok) => {
@@ -735,7 +735,7 @@
                   class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
                 >
                 <button on:click={select(message)}>
-                  <div class="flex min-w-0 gap-x-4">
+                  <div class="flex min-w-0 gap-x-7">
                     <div class="flex min-w-10 items-center">
                       <img
                         class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
@@ -744,23 +744,23 @@
                       />
                     </div>
                     <div class="min-w-0 flex-auto">
-                      <p class="text-sm font-semibold leading-6 text-white">
+                      <p class="text-sm truncate font-semibold text-white flex justify-start">
                         {parseEventContent(message).parsedContent.word1}
                         {parseEventContent(message).parsedContent.word2}
                         {parseEventContent(message).parsedContent.word3}
                         {parseEventContent(message).parsedContent.word4}
                       </p>
-                      <p class="mt-1 truncate text-xs leading-5 text-gray-500">
+                      <p class="mt-1 truncate text-xs flex justify-start text-gray-500">
                         {message.author?.name}
                       </p>
                     </div>
                   </div>
                 </button>
                   <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
-                    <div class="text-sm leading-6 text-gray-200">
+                    <div class="text-sm leading-6 text-gray-200 truncate">
                       {parseEventContent(message).parsedContent.location}
                     </div>
-                    <div class="text-sm leading-6 text-gray-200">
+                    <div class="text-sm leading-6 text-gray-200 truncate">
                       @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(
                         message
                       ).parsedContent.timeTo}
@@ -768,7 +768,7 @@
                     <!-- <small class="text-xs leading-6 text-gray-400">
                       added {new Date(message.created_at * 1000).toLocaleTimeString([], {timeStyle: 'short'}) }
                     </small> -->
-                    <small class="text-xs leading-6 text-gray-400">
+                    <small class="text-xs leading-6 text-gray-400 truncate">
                       💵 {parseEventContent(message).parsedContent.minPrice} - {parseEventContent(
                         message
                       ).parsedContent.maxPrice}
