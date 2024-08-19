@@ -17,7 +17,11 @@ jobs:
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
       - name: Build Docker image
-        run: docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/mezzely:${{ github.sha }} .
+        run: |
+          docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/mezzely:${{ github.sha }} .
+          docker tag ghcr.io/${{ secrets.GHCR_USERNAME }}/mezzely:${{ github.sha }} ghcr.io/${{ secrets.GHCR_USERNAME }}/mezzely:latest
 
       - name: Push Docker image to GitHub Container Registry
-        run: docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/mezzely:${{ github.sha }}
+        run: |
+          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/mezzely:${{ github.sha }}
+          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/mezzely:latest
