@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import noUiSlider from 'nouislider';
+  import * as noUiSlider from 'nouislider';
   import 'nouislider/dist/nouislider.css';
 
   let slider;
@@ -35,5 +35,6 @@
   .slider-container {
     width: 100%;
     margin: 20px 0;
+    height: 20px; 
   }
 </style>
