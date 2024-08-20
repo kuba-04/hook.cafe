@@ -44,10 +44,12 @@
   let selectedAuthor = "";
   let channelId = null;
   let chatOpen = null;
+  let loadingComplete;
 
+  // TODO
   // price slider
-  let minValue;
-  let maxValue;
+  // let minValue;
+  // let maxValue;
 
   // time picker
   let timeFrom = "12:00";
@@ -325,12 +327,17 @@
     const profile = user.profile;
     userProfiles.set(eventPubkey, profile);
     validateMessagesWithProfile(eventPubkey, profile);
+    loadingComplete = await isLoadingComplete();
   }
 
   function validateMessagesWithProfile(eventPubkey, profile) {
     messages = messages.map((msg) =>
       msg.pubkey === eventPubkey ? { ...msg, author: profile } : msg
     );
+  }
+
+  function isLoadingComplete() {
+    return [...userProfiles].map(e => e[1]).length === messages.length;
   }
 
   async function select(event) {
@@ -428,8 +435,8 @@
     }
 
     let loading = true;
-    message.minPrice = minValue.toString();
-    message.maxPrice = maxValue.toString();
+    // message.minPrice = minValue.toString();
+    // message.maxPrice = maxValue.toString();
     message.timeFrom = timeFrom;
     message.timeTo = timeTo;
     message.city = city;
@@ -661,7 +668,9 @@
                   />
                 </span>
               </div>
-              <p class="mt-4 text-lg leading-8 text-gray-300">
+
+              <!-- TODO: not working on mobile browsers -->
+              <!-- <p class="mt-4 text-lg leading-8 text-gray-300">
                 Your meal budget:
               </p>
               <div class="mt-6 flex max-w-md gap-x-4">
@@ -672,7 +681,7 @@
                 <span class="mt-4 text-lg leading-8 text-gray-300"
                   >{maxValue}</span
                 >
-              </div>
+              </div> -->
 
               <!-- alert -->
               {#if showAlertOnSubmittingInvalid}
@@ -741,9 +750,9 @@
             <ul role="list" class="divide-y divide-gray-100 mt-5">
               {#each messages as message (message.id)}
                 <li
+                  on:click={select(message)}
                   class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
                 >
-                <button on:click={select(message)}>
                   <div class="flex min-w-0 gap-x-7">
                     <div class="flex min-w-10 items-center">
                       <img
@@ -764,7 +773,6 @@
                       </p>
                     </div>
                   </div>
-                </button>
                   <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
                     <div class="text-sm leading-6 text-gray-200 truncate">
                       {parseEventContent(message).parsedContent.location}
@@ -772,18 +780,20 @@
                     <div class="text-sm leading-6 text-gray-200 truncate">
                       @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(
                         message
-                      ).parsedContent.timeTo}
+                        ).parsedContent.timeTo}
                     </div>
                     <!-- <small class="text-xs leading-6 text-gray-400">
                       added {new Date(message.created_at * 1000).toLocaleTimeString([], {timeStyle: 'short'}) }
                     </small> -->
-                    <small class="text-xs leading-6 text-gray-400 truncate">
+                    
+                    <!-- TODO: -->
+                    <!-- <small class="text-xs leading-6 text-gray-400 truncate">
                       💵 {parseEventContent(message).parsedContent.minPrice} - {parseEventContent(
                         message
-                      ).parsedContent.maxPrice}
-                    </small>
-                    <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
-                  </div>
+                        ).parsedContent.maxPrice}
+                      </small> -->
+                      <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
+                    </div>
                 </li>
               {/each}
               {#if selectedAuthor.length > 0 && messages.length < 4}
@@ -801,7 +811,7 @@
           </dl>
 
           <div>
-            {#if selectedAuthor.length > 0 && messages.length > 3 && !chatOpen}
+            {#if selectedAuthor.length > 0 && messages.length > 3 && !chatOpen && loadingComplete}
               <button
                 on:click={openOrJoinChat}
                 type="button"
