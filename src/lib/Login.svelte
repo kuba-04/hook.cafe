@@ -93,7 +93,7 @@
 
 </script>
 
-  <div class=" justify-center px-8 py-12 w-66 h-96">
+  <div class=" justify-center px-8 py-12 w-66 h-96 scrollbar-hidden overflow-y-scroll">
   {#if hasAccount}
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <h2
@@ -164,26 +164,27 @@
             />
           </div>
           <div>
-            <div class="mt-2">
+            <div class="mt-2 relative">
               <input
                 id="city"
                 class="block w-full rounded-md border-0 py-1.5 pl-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
                 type="text"
                 placeholder="city"
                 required
-                bind:value={query} 
-                on:input={handleInput} 
+                bind:value={query}
+                on:input={handleInput}
               />
               {#if results.length > 0}
-                <div class="autocomplete-results">
+                <div class="absolute z-10 w-full bg-white rounded-md shadow-lg max-h-60 overflow-y-auto scrollbar-hidden">
                   {#each results as city}
-                    <button class="p-2 cursor-pointer hover:bg-gray-200" on:click={() => selectCity(city)}>
+                    <button class="block w-full p-2 text-left cursor-pointer hover:bg-gray-200" on:click={() => selectCity(city)}>
                       {city.name}, {city.country}
                     </button>
                   {/each}
                 </div>
               {/if}
             </div>
+          </div>
         </div>
         
 
@@ -233,16 +234,20 @@
   {/if}
 </div>
 
-<!-- <style lang="postcss">
-  :global(html) {
-    background-color: theme(colors.gray.100);
-  }
-</style> -->
-
 <style>
   .autocomplete-results {
     border: 1px solid #ccc;
     max-height: 150px;
     overflow-y: auto;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge, and Firefox */
+  .scrollbar-hidden {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
 </style>
