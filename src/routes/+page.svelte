@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte";
 
+  import { browser } from '$app/environment';
   import Modal from "../lib/Modal.svelte";
   import Login from "$lib/Login.svelte";
   import Slider from "../lib/Slider.svelte";
@@ -163,7 +164,9 @@
   }
 
   onMount(async () => {
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    if (browser) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
     const preloadKey = $page.state;
     if (Object.keys(preloadKey).length === 0) {
       return;
@@ -465,7 +468,9 @@
       if (channelEvent) {
         channelId = channelEvent.id;
         chatOpen = true;
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        if (browser) {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
       } else {
         console.log("creating channel..");
         let channelContent = {};
@@ -486,7 +491,9 @@
               channelId = latestChannelEvent.id;
               console.log("joining channel...");
               chatOpen = true;
-              window.scrollTo({ top: 0, behavior: "smooth" });
+              if (browser) {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }
             }
           });
         });
@@ -494,7 +501,9 @@
     } else {
       console.log("joining channel...");
       chatOpen = true;
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (browser) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     }
   }
 
