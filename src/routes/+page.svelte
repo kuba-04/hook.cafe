@@ -166,9 +166,9 @@
   }
 
   onMount(async () => {
-    if (browser) {
-      window.addEventListener('beforeunload', handleBeforeUnload);
-    }
+    // if (browser) {
+    //   window.addEventListener('beforeunload', handleBeforeUnload);
+    // }
     const preloadKey = $page.state;
     if (Object.keys(preloadKey).length === 0) {
       return;
@@ -191,21 +191,20 @@
       signer: signer,
     });
 
-    ndk.connect().then(() => {
-      console.log("connected")
-      loadOwnEvents();
-      pubKey = signer.user().npub;
-      const profile = getUserProfile(ndk, pubKey);
-      avatar = profile.avatar || "";
-      name = profile.name || "";
-      city = profile.city || null;
+    await ndk.connect();
+    console.log("connected")
+    await loadOwnEvents();
+    pubKey = (await signer.user()).npub;
+    const profile = await getUserProfile(ndk, pubKey);
+    avatar = profile.avatar || "";
+    name = profile.name || "";
+    city = profile.city || null;
 
-      if (selectedAuthor.length > 0) {
-        initConnectedMessages();
-      } else {
-        initMessages();
-      }
-    });
+    if (selectedAuthor.length > 0) {
+      await initConnectedMessages();
+    } else {
+      await initMessages();
+    }
   });
 
   function isRootNote(event) {
@@ -755,29 +754,30 @@
             <ul role="list" class="divide-y divide-gray-100 mt-5">
               {#each messages as message (message.id)}
                 <li
-                  on:click={select(message)}
                   class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
                 >
-                  <div class="flex min-w-0 gap-x-7">
-                    <div class="flex min-w-10 items-center">
-                      <img
-                        class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                        src={message.author?.avatar}
-                        alt=""
-                      />
+                  <button on:click={(event) => select(message)} class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
+                    <div class="flex min-w-0 gap-x-7">
+                      <div class="flex min-w-10 items-center">
+                        <img
+                          class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
+                          src={message.author?.avatar}
+                          alt=""
+                        />
+                      </div>
+                      <div class="min-w-0 flex-auto">
+                        <p class="text-sm truncate font-semibold text-white flex justify-start">
+                          {parseEventContent(message).parsedContent.word1}
+                          {parseEventContent(message).parsedContent.word2}
+                          {parseEventContent(message).parsedContent.word3}
+                          {parseEventContent(message).parsedContent.word4}
+                        </p>
+                        <p class="mt-1 truncate text-xs flex justify-start text-gray-500">
+                          {message.author?.name}
+                        </p>
+                      </div>
                     </div>
-                    <div class="min-w-0 flex-auto">
-                      <p class="text-sm truncate font-semibold text-white flex justify-start">
-                        {parseEventContent(message).parsedContent.word1}
-                        {parseEventContent(message).parsedContent.word2}
-                        {parseEventContent(message).parsedContent.word3}
-                        {parseEventContent(message).parsedContent.word4}
-                      </p>
-                      <p class="mt-1 truncate text-xs flex justify-start text-gray-500">
-                        {message.author?.name}
-                      </p>
-                    </div>
-                  </div>
+                  </button>
                   <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
                     <div class="text-sm leading-6 text-gray-200 truncate">
                       {parseEventContent(message).parsedContent.location}
