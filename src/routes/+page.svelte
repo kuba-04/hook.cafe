@@ -90,22 +90,22 @@
       signer: signer,
     });
 
-    await ndk.connect();
+    pubKey = (await (signer.user())).npub;
 
-    await setProfileData(ndk, name, city, avatar);
+    ndk.connect().then(() => {
+      setProfileData(ndk, name, city, avatar);
 
-    pubKey = (await signer.user()).npub;
-    const profile = await getUserProfile(ndk, pubKey);
-    name = profile.name || "";
-    city = profile.city || null;
-    avatar = profile.avatar || "";
-
-    // if stared adding request we will try to submit it after the registration
-    if (isMessageValid) {
-      await handleSubmit();
-    }
-
-    await initMessages();
+      
+      getUserProfile(ndk, pubKey).then(profile => {
+        name = profile.name || "";
+        city = profile.city || null;
+        avatar = profile.avatar || "";
+  
+        if (isMessageValid && name.length > 0) {
+          handleSubmit();
+        }      
+      })
+    }).then(() => initMessages());
   }
 
   async function handleLogin(event) {
@@ -191,20 +191,21 @@
       signer: signer,
     });
 
-    await ndk.connect().then(_ => console.log("connected"));
-    await loadOwnEvents();
+    ndk.connect().then(() => {
+      console.log("connected")
+      loadOwnEvents();
+      pubKey = signer.user().npub;
+      const profile = getUserProfile(ndk, pubKey);
+      avatar = profile.avatar || "";
+      name = profile.name || "";
+      city = profile.city || null;
 
-    pubKey = (await signer.user()).npub;
-    const profile = await getUserProfile(ndk, pubKey);
-    avatar = profile.avatar || "";
-    name = profile.name || "";
-    city = profile.city || null;
-
-    if (selectedAuthor.length > 0) {
-      await initConnectedMessages();
-    } else {
-      await initMessages();
-    }
+      if (selectedAuthor.length > 0) {
+        initConnectedMessages();
+      } else {
+        initMessages();
+      }
+    });
   });
 
   function isRootNote(event) {
@@ -223,14 +224,14 @@
     subscription.on("event", async (event) => {
       const eventCity = JSON.parse(event.content).city;
       if (isRootNote(event) && isTheSameCity(city, eventCity)) {
-        addMessage(event);
+        addMessage(event).then(() => fetchUserProfile(event.pubkey));
       }
     });
     ndk.fetchEvents([KIND_1_FILTER]).then((events) => {
       for (const event of events) {
         const eventCity = JSON.parse(event.content).city;
         if (isRootNote(event) && isTheSameCity(city, eventCity)) {
-          addMessage(event);
+          addMessage(event).then(() => fetchUserProfile(event.pubkey));
         }
       }
     });
@@ -245,13 +246,13 @@
 
   async function initConnectedMessages() {
     // 1. selected and its parent
-    await ndk
+    ndk
       .fetchEvents({ kinds: [1], authors: [selectedAuthor], since: getBODTimestamp(), until: getEODTimestamp() })
       .then((notes) =>
         notes.forEach((e) => {
           // selected
           if (isRootNote(e)) {
-            addMessage(e);
+            addMessage(e).then(() => fetchUserProfile(e.pubkey));
           } else {
             // and his parent:
             const selectedParentKey = e.tagValue("p");
@@ -260,7 +261,7 @@
               .then((p) =>
                 p.forEach((note) => {
                   if (isRootNote(note)) {
-                    addMessage(note);
+                    addMessage(note).then(() => fetchUserProfile(note.pubkey));
                   }
                 })
               );
@@ -277,7 +278,7 @@
           (note.getMatchingTags("e", currentUserKey) !== null ||
             note.getMatchingTags("e", selectedAuthor) !== null)
         ) {
-          addMessage(note);
+          addMessage(note).then(() => fetchUserProfile(note.pubkey));
         }
       });
     });
@@ -288,18 +289,21 @@
     subscription.on("event", async (event) => {
       if (isReplyNote(event)) {
         // selected author has to sub my note:
-        await addMessage(event);
-        // and we have to add the parent's note:
-        const selectedParentKey = event.tagValue("p");
-        await ndk
-          .fetchEvents({ kinds: [1], authors: [selectedParentKey], since: getBODTimestamp(), until: getEODTimestamp() })
-          .then((p) =>
-            p.forEach((note) => {
-              if (isRootNote(note)) {
-                addMessage(note);
-              }
-            })
-          );
+        addMessage(event)
+          .then(() => fetchUserProfile(event.pubkey))
+          .then(() => {
+            // and we have to add the parent's note:
+            const selectedParentKey = event.tagValue("p");
+            ndk
+              .fetchEvents({ kinds: [1], authors: [selectedParentKey], since: getBODTimestamp(), until: getEODTimestamp() })
+              .then((p) =>
+                p.forEach((note) => {
+                  if (isRootNote(note)) {
+                    addMessage(note).then(() => fetchUserProfile(note.pubkey));
+                  }
+                })
+              );
+          })
       }
 
       // todo: question if it is required to subscribe to a chat
@@ -316,18 +320,19 @@
       messages = [{ ...event, author: null }, ...messages].sort(
         (a, b) => b.created_at - a.created_at
       );
-      await fetchUserProfile(eventPubkey);
     }
   }
 
   async function fetchUserProfile(eventPubkey) {
     if (userProfiles.has(eventPubkey)) return;
     const user = ndk.getUser({ pubkey: eventPubkey });
-    await user.fetchProfile();
-    const profile = user.profile;
-    userProfiles.set(eventPubkey, profile);
-    validateMessagesWithProfile(eventPubkey, profile);
-    loadingComplete = await isLoadingComplete();
+    user.fetchProfile().then(() => {
+      const profile = user.profile;
+      
+      userProfiles.set(eventPubkey, profile);
+      validateMessagesWithProfile(eventPubkey, profile);
+      loadingComplete = isLoadingComplete();
+    })
   }
 
   function validateMessagesWithProfile(eventPubkey, profile) {
