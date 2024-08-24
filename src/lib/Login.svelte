@@ -235,12 +235,6 @@
 </div>
 
 <style>
-  .autocomplete-results {
-    border: 1px solid #ccc;
-    max-height: 150px;
-    overflow-y: auto;
-  }
-
   .scrollbar-hidden::-webkit-scrollbar {
     display: none;
   }

@@ -756,7 +756,6 @@
                 <li
                   class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
                 >
-                  <button on:click={(event) => select(message)} class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer">
                     <div class="flex min-w-0 gap-x-7">
                       <div class="flex min-w-10 items-center">
                         <img
@@ -777,7 +776,6 @@
                         </p>
                       </div>
                     </div>
-                  </button>
                   <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
                     <div class="text-sm leading-6 text-gray-200 truncate">
                       {parseEventContent(message).parsedContent.location}
