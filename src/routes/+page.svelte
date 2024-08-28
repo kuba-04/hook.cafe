@@ -754,6 +754,7 @@
             <ul role="list" class="divide-y divide-gray-100 mt-5">
               {#each messages as message (message.id)}
                 <li
+                  on:click={(event) => select(message)}
                   class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
                 >
                     <div class="flex min-w-0 gap-x-7">
