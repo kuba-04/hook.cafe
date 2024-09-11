@@ -1,8 +1,8 @@
 <script>
-  import { createNewSigner, recreateSigner } from './authUtils';
   import { createEventDispatcher } from 'svelte';
   import { getRandomAvatar } from './avatars';
   import citiesData from './cities.json';
+  import { NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
 
   export let name = "";
   export let privKey = "";
@@ -30,9 +30,9 @@
   const handleRegister = async () => {
     loading = true;
     try {
-      const privKey = createNewSigner();
+      const signer = NDKPrivateKeySigner.generate();
       let avatar = getRandomAvatar() 
-      dispatchRegisteredEvent({name, avatar, city, privKey});
+      dispatchRegisteredEvent({name, avatar, city, signer});
       localStorage.setItem('user', name );
     } catch (error) {
       if (error instanceof Error) {
@@ -48,7 +48,7 @@
   const handleSignin = async () => {
     loading = true;
     try {
-      recreateSigner(privKey);
+      new NDKPrivateKeySigner(privKey);
       dispatchLoggedInEvent(privKey);
     } catch (error) {
       if (error instanceof Error) {
@@ -65,8 +65,8 @@
     dispatch('login', { privKey });
   }
 
-  function dispatchRegisteredEvent({name, avatar, city, privKey}) {
-    dispatch('register', { name, avatar, city, privKey });
+  function dispatchRegisteredEvent({name, avatar, city, signer}) {
+    dispatch('register', { name, avatar, city, signer });
   }
 
   function searchCities(query) {

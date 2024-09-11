@@ -7,12 +7,8 @@
   import Slider from "../lib/Slider.svelte";
   import { goto } from "$app/navigation";
   import { env } from '$env/dynamic/public';
-  import NDK, { NDKEvent } from "@nostr-dev-kit/ndk";
-  import {
-    getUserProfile,
-    recreateSigner,
-    setProfileData,
-  } from "$lib/authUtils";
+  import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+  import { getUserProfile, setProfileData } from "$lib/authUtils";
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
   import Chat from "$lib/Chat/Chat.svelte";
@@ -76,14 +72,16 @@
     name = event.detail.name;
     city = event.detail.city;
     avatar = event.detail.avatar;
-    privKey = event.detail.privKey;
+    signer = event.detail.signer;
 
-    if (privKey) {
+    if (signer) {
       isAuthenticated = true;
       showModal = false;
+      privKey = signer.privateKey;
+    } else {
+      console.log('Registration error. Try again');
+      return;
     }
-
-    signer = recreateSigner(privKey);
 
     ndk = new NDK({
       explicitRelayUrls: [env.PUBLIC_RELAY_URL],
@@ -110,7 +108,7 @@
 
   async function handleLogin(event) {
     privKey = event.detail.privKey;
-    signer = recreateSigner(privKey);
+    signer = new NDKPrivateKeySigner(privKey);
     ndk = new NDK({
       explicitRelayUrls: [env.PUBLIC_RELAY_URL],
       signer: signer,
@@ -173,11 +171,11 @@
     if (Object.keys(preloadKey).length === 0) {
       return;
     } else {
-      privKey = preloadKey;
+      privKey = preloadKey.toString();
     }
 
     if (privKey) {
-      signer = recreateSigner(privKey);
+      signer = new NDKPrivateKeySigner(privKey);
       isAuthenticated = true;
     } else {
       isAuthenticated = false;

@@ -1,16 +1,4 @@
-import { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
-import { generatePrivateKey } from "nostr-tools";
-
-export function createNewSigner() {
-    const privateKey = generatePrivateKey();
-    const signer = new NDKPrivateKeySigner(privateKey);
-    return signer.privateKey;
-};
-
-export function recreateSigner(privateKey) {
-    const signer = new NDKPrivateKeySigner(privateKey);
-    return signer;
-};
+import { NDKEvent } from "@nostr-dev-kit/ndk";
 
 export async function setProfileData(ndk, name, city, avatar) {
     const metadataEvent = new NDKEvent(ndk);
