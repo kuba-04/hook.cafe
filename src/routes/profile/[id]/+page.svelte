@@ -39,7 +39,7 @@
       console.log("session ends..")
       goto("/");
     }
-    const signer = new NDKPrivateKeySigner(privKey);
+    const signer = new NDKPrivateKeySigner(privKey.toString());
     ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
     await ndk.connect();
 
