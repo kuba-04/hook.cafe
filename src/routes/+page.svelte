@@ -167,7 +167,16 @@
     // if (browser) {
     //   window.addEventListener('beforeunload', handleBeforeUnload);
     // }
-    const preloadKey = $page.state;
+    // debug ios
+    console.log('mounting..');
+    let preloadKey;
+    if ($page && $page.state) {
+      preloadKey = $page.state;
+      console.log('preloadKey: ', preloadKey);
+    } else {
+      console.log('no preloadKey');
+      return;
+    }
     if (Object.keys(preloadKey).length === 0) {
       return;
     } else {
@@ -189,7 +198,11 @@
       signer: signer,
     });
 
-    await ndk.connect();
+    try {
+      await ndk.connect();
+    } catch (e) {
+      console.log("unable to connect to relay");
+    }
     console.log("connected")
     await loadOwnEvents();
     pubKey = (await signer.user()).npub;
