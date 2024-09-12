@@ -167,14 +167,10 @@
     // if (browser) {
     //   window.addEventListener('beforeunload', handleBeforeUnload);
     // }
-    // debug ios
-    console.log('mounting..');
     let preloadKey;
     if ($page && $page.state) {
       preloadKey = $page.state;
-      console.log('preloadKey: ', preloadKey);
     } else {
-      console.log('no preloadKey');
       return;
     }
     if (Object.keys(preloadKey).length === 0) {
