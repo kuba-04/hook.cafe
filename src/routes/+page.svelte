@@ -377,7 +377,7 @@
       ["e", event.id],
       ["p", event.pubkey],
     ];
-    replyEvent.content = ownEvent?.content || "";
+    replyEvent.content = (ownEvent && ownEvent.content) || "";
     messages = [];
     replyEvent.publish().then(() => {
       userProfiles.clear();
@@ -555,15 +555,15 @@
         {#if selectedAuthor.length > 0}
           <div class="absolute top-5 left-10 items-center">
             <p class="text-lg text-gray-300">
-              Building {city?.cityName} group<span class="animate-ping"
+              Building {city && city.cityName} group<span class="animate-ping"
                 >...</span
               >
             </p>
           </div>
-        {:else if submitted && city?.cityName}
+        {:else if submitted && city && city.cityName}
           <div class="absolute top-5 left-10 items-center">
             <p class="text-lg text-gray-300">
-              Hello {city?.cityName} people!<br class="md:hide" />
+              Hello {city && city.cityName} people!<br class="md:hide" />
             </p>
           </div>
         {/if}
@@ -768,7 +768,7 @@
                       <div class="flex min-w-10 items-center">
                         <img
                           class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                          src={message.author?.avatar}
+                          src={{message.author && message.author.avatar}}
                           alt=""
                         />
                       </div>
@@ -780,7 +780,7 @@
                           {parseEventContent(message).parsedContent.word4}
                         </p>
                         <p class="mt-1 truncate text-xs flex justify-start text-gray-500">
-                          {message.author?.name}
+                          {message.author && message.author.name}
                         </p>
                       </div>
                     </div>
