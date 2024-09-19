@@ -768,7 +768,7 @@
                       <div class="flex min-w-10 items-center">
                         <img
                           class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                          src={{message.author && message.author.avatar}}
+                          src={message.author && message.author.avatar}
                           alt=""
                         />
                       </div>
