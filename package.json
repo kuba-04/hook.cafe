@@ -18,6 +18,7 @@
 		"@sveltejs/vite-plugin-svelte": "^3.1.2",
 		"autoprefixer": "^10.4.19",
 		"bech32": "^2.0.0",
+		"big-integer": "^1.6.52",
 		"crypto-js": "^4.2.0",
 		"d3-scale": "^4.0.2",
 		"is-hotkey": "^0.2.0",
