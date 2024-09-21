@@ -1,3 +1,6 @@
-if (typeof BigInt === 'undefined') {
-	global.BigInt = require('big-integer');
+let BigInt;
+if (typeof window.BigInt === "undefined") {
+  BigInt = require("big-integer");
+} else {
+  BigInt = window.BigInt; 
 }
