@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - master
+      - test
 
 jobs:
   build-and-push:
@@ -18,10 +18,10 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }} .
-          docker tag ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }} ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:latest
+          docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/test.hookcafe:${{ github.sha }} .
+          docker tag ghcr.io/${{ secrets.GHCR_USERNAME }}/test.hookcafe:${{ github.sha }} ghcr.io/${{ secrets.GHCR_USERNAME }}/test.hookcafe:latest
 
       - name: Push Docker image to GitHub Container Registry
         run: |
-          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }}
-          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:latest
+          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/test.hookcafe:${{ github.sha }}
+          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/test.hookcafe:latest
