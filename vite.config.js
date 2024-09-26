@@ -15,7 +15,7 @@ export default defineConfig({
 			registerType: "autoUpdate",
 			injectRegister: "auto",
 			workbox: {
-			  maximumFileSizeToCacheInBytes: 5 * 1024 ** 2,
+			  maximumFileSizeToCacheInBytes: 10 * 1024 ** 2,
 			},
 			manifest: {
 			  name: "Hook Cafe",
