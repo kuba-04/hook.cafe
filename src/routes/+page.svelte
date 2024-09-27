@@ -6,7 +6,7 @@
   import Login from "$lib/Login.svelte";
   import Slider from "../lib/Slider.svelte";
   import { goto } from "$app/navigation";
-  // import { env } from '$env/dynamic/public';
+  import { env } from '$env/dynamic/public';
   import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
@@ -83,7 +83,7 @@
     }
 
     ndk = new NDK({
-      explicitRelayUrls: ["wss://relay.hook.cafe"],
+      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
       signer: signer,
     });
 
@@ -130,7 +130,7 @@
     privKey = event.detail.privKey;
     signer = new NDKPrivateKeySigner(privKey);
     ndk = new NDK({
-      explicitRelayUrls: ["wss://relay.hook.cafe"],
+      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
       signer: signer,
     });
     await ndk.connect();
@@ -187,29 +187,31 @@
     // if (browser) {
     //   window.addEventListener('beforeunload', handleBeforeUnload);
     // }
-    let preloadKey;
-    if ($page && $page.state) {
-      preloadKey = $page.state;
-    } else {
-      return;
-    }
-    if (Object.keys(preloadKey).length === 0) {
-      return;
-    } else {
-      privKey = preloadKey.toString();
-    }
+    console.log('return on mount')
+    return;
+    // let preloadKey;
+    // if ($page && $page.state) {
+    //   preloadKey = $page.state;
+    // } else {
+    //   return;
+    // }
+    // if (Object.keys(preloadKey).length === 0) {
+    //   return;
+    // } else {
+    //   privKey = preloadKey.toString();
+    // }
 
-    if (privKey) {
-      signer = new NDKPrivateKeySigner(privKey);
-      isAuthenticated = true;
-    } else {
-      isAuthenticated = false;
-      showModal = true;
-      return;
-    }
+    // if (privKey) {
+    //   signer = new NDKPrivateKeySigner(privKey);
+    //   isAuthenticated = true;
+    // } else {
+    //   isAuthenticated = false;
+    //   showModal = true;
+    //   return;
+    // }
     selectedAuthor = localStorage.getItem("selected") || "";
 
-    const relay = "wss://relay.hook.cafe";
+    const relay = env.PUBLIC_RELAY_URL;
     if (relay === undefined) {
       console.log("please provide at least one relay");
       return;
@@ -540,7 +542,7 @@
 
         channelContent.name = city.cityName + "_group";
         channelContent.about = "let's meet in real life!";
-        channelContent.relays = "wss://relay.hook.cafe";
+        channelContent.relays = env.PUBLIC_RELAY_URL;
         ndkEvent.content = JSON.stringify(channelContent);
 
         ndkEvent.publish().then((ok) => {
