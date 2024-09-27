@@ -14,7 +14,7 @@
 		"@nostr-dev-kit/ndk": "2.8.2",
 		"@sveltejs/adapter-auto": "^3.2.4",
 		"@sveltejs/adapter-node": "^5.2.2",
-		"@sveltejs/kit": "^2.5.26",
+		"@sveltejs/kit": "^2.6.0",
 		"@sveltejs/vite-plugin-svelte": "^3.1.2",
 		"@vite-pwa/assets-generator": "^0.2.4",
 		"autoprefixer": "^10.4.19",
