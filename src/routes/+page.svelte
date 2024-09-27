@@ -8,7 +8,6 @@
   import { goto } from "$app/navigation";
   import { env } from '$env/dynamic/public';
   import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
-  import { getUserProfile, setProfileData } from "$lib/authUtils";
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
   import Chat from "$lib/Chat/Chat.svelte";
@@ -105,6 +104,27 @@
       })
     }).then(() => initMessages());
   }
+
+  async function getUserProfile(ndk, pubKey) {
+    const user = ndk.getUser({
+      npub: pubKey,
+    });
+
+    return await user.fetchProfile();
+  }
+
+  async function setProfileData(ndk, name, city, avatar) {
+    const metadataEvent = new NDKEvent(ndk);
+    metadataEvent.kind = 0;
+    const content = JSON.stringify({
+      name: name,
+      city: city,
+      avatar: avatar,
+    });
+    metadataEvent.content = content;
+    await metadataEvent.sign();
+    await metadataEvent.publish();
+  } 
 
   async function handleLogin(event) {
     privKey = event.detail.privKey;

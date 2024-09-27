@@ -1,5 +1,4 @@
 <script>
-  import { getUserProfile, setProfileData } from "$lib/authUtils";
   import Modal from "../../../lib/Modal.svelte";
   import NDK, { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
@@ -59,6 +58,27 @@
         }
       });
   });
+
+  async function getUserProfile(ndk, pubKey) {
+    const user = ndk.getUser({
+      npub: pubKey,
+    });
+
+    return await user.fetchProfile();
+  }
+
+  async function setProfileData(ndk, name, city, avatar) {
+    const metadataEvent = new NDKEvent(ndk);
+    metadataEvent.kind = 0;
+    const content = JSON.stringify({
+      name: name,
+      city: city,
+      avatar: avatar,
+    });
+    metadataEvent.content = content;
+    await metadataEvent.sign();
+    await metadataEvent.publish();
+  } 
 
   function selectAvatar(av) {
     selectedAvatar = av;
