@@ -2,7 +2,7 @@
   import Modal from "../../../lib/Modal.svelte";
   import NDK, { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
-  import { env } from '$env/dynamic/public';
+  import { PUBLIC_RELAY_URL } from '$env/static/public';
   import { goto } from "$app/navigation";
   import { getAllAvatars } from "$lib/avatars";
   import PasswordDisplay from "$lib/PasswordDisplay.svelte";
@@ -39,7 +39,7 @@
       goto("/");
     }
     const signer = new NDKPrivateKeySigner(privKey.toString());
-    ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
+    ndk = new NDK({ explicitRelayUrls: [PUBLIC_RELAY_URL], signer });
     await ndk.connect();
 
     const user = await signer.user();
