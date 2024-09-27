@@ -187,26 +187,28 @@
     // if (browser) {
     //   window.addEventListener('beforeunload', handleBeforeUnload);
     // }
-    let preloadKey;
-    if ($page && $page.state) {
-      preloadKey = $page.state;
-    } else {
-      return;
-    }
-    if (Object.keys(preloadKey).length === 0) {
-      return;
-    } else {
-      privKey = preloadKey.toString();
-    }
+    console.log('return on mount')
+    return;
+    // let preloadKey;
+    // if ($page && $page.state) {
+    //   preloadKey = $page.state;
+    // } else {
+    //   return;
+    // }
+    // if (Object.keys(preloadKey).length === 0) {
+    //   return;
+    // } else {
+    //   privKey = preloadKey.toString();
+    // }
 
-    if (privKey) {
-      signer = new NDKPrivateKeySigner(privKey);
-      isAuthenticated = true;
-    } else {
-      isAuthenticated = false;
-      showModal = true;
-      return;
-    }
+    // if (privKey) {
+    //   signer = new NDKPrivateKeySigner(privKey);
+    //   isAuthenticated = true;
+    // } else {
+    //   isAuthenticated = false;
+    //   showModal = true;
+    //   return;
+    // }
     selectedAuthor = localStorage.getItem("selected") || "";
 
     const relay = env.PUBLIC_RELAY_URL;
