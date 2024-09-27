@@ -183,7 +183,7 @@
     return today.getTime().toString().substring(0, 10);
   }
 
-  onMount(async () => {
+  onMount(() => {
     // if (browser) {
     //   window.addEventListener('beforeunload', handleBeforeUnload);
     // }
@@ -209,29 +209,52 @@
     }
     selectedAuthor = localStorage.getItem("selected") || "";
 
+    const relay = env.PUBLIC_RELAY_URL;
+    if (relay === undefined) {
+      console.log("please provide at least one relay");
+      return;
+    }
     ndk = new NDK({
-      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
+      explicitRelayUrls: [relay],
       signer: signer,
     });
 
     try {
-      await ndk.connect();
+      ndk.connect()
+        .then(() => console.log("connected"))
+        .then(() => loadOwnEvents())
+        .then(() => {
+          signer.user().then(u => {
+            pubKey = u.npub;
+        })})
+        .then(() => {
+          const profile = getUserProfile(ndk, pubKey);
+          this.avatar = profile.avatar || "";
+          this.name = profile.name || "";
+          this.city = profile.city || null;
+
+          if (selectedAuthor.length > 0) {
+            initConnectedMessages();
+          } else {
+            initMessages();
+          }
+        })
     } catch (e) {
       console.log("unable to connect to relay");
     }
-    console.log("connected")
-    await loadOwnEvents();
-    pubKey = (await signer.user()).npub;
-    const profile = await getUserProfile(ndk, pubKey);
-    avatar = profile.avatar || "";
-    name = profile.name || "";
-    city = profile.city || null;
+    
+    // await loadOwnEvents();
+    // pubKey = (await signer.user()).npub;
+    // const profile = await getUserProfile(ndk, pubKey);
+    // avatar = profile.avatar || "";
+    // name = profile.name || "";
+    // city = profile.city || null;
 
-    if (selectedAuthor.length > 0) {
-      await initConnectedMessages();
-    } else {
-      await initMessages();
-    }
+    // if (selectedAuthor.length > 0) {
+    //   await initConnectedMessages();
+    // } else {
+    //   await initMessages();
+    // }
   });
 
   function isRootNote(event) {
