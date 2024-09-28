@@ -8,6 +8,7 @@
   import { goto } from "$app/navigation";
   import { env } from '$env/dynamic/public';
   import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+  import { getUserProfile, setProfileData } from "$lib/authUtils";
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
   import Chat from "$lib/Chat/Chat.svelte";
@@ -105,27 +106,6 @@
     }).then(() => initMessages());
   }
 
-  async function getUserProfile(ndk, pubKey) {
-    const user = ndk.getUser({
-      npub: pubKey,
-    });
-
-    return await user.fetchProfile();
-  }
-
-  async function setProfileData(ndk, name, city, avatar) {
-    const metadataEvent = new NDKEvent(ndk);
-    metadataEvent.kind = 0;
-    const content = JSON.stringify({
-      name: name,
-      city: city,
-      avatar: avatar,
-    });
-    metadataEvent.content = content;
-    await metadataEvent.sign();
-    await metadataEvent.publish();
-  } 
-
   async function handleLogin(event) {
     privKey = event.detail.privKey;
     signer = new NDKPrivateKeySigner(privKey);
@@ -183,80 +163,55 @@
     return today.getTime().toString().substring(0, 10);
   }
 
-  onMount(() => {
+  onMount(async () => {
     // if (browser) {
     //   window.addEventListener('beforeunload', handleBeforeUnload);
     // }
-    console.log('return on mount')
-    return;
-    // let preloadKey;
-    // if ($page && $page.state) {
-    //   preloadKey = $page.state;
-    // } else {
-    //   return;
-    // }
-    // if (Object.keys(preloadKey).length === 0) {
-    //   return;
-    // } else {
-    //   privKey = preloadKey.toString();
-    // }
-
-    // if (privKey) {
-    //   signer = new NDKPrivateKeySigner(privKey);
-    //   isAuthenticated = true;
-    // } else {
-    //   isAuthenticated = false;
-    //   showModal = true;
-    //   return;
-    // }
-    selectedAuthor = localStorage.getItem("selected") || "";
-
-    const relay = env.PUBLIC_RELAY_URL;
-    if (relay === undefined) {
-      console.log("please provide at least one relay");
+    let preloadKey;
+    if ($page && $page.state) {
+      preloadKey = $page.state;
+    } else {
       return;
     }
+    if (Object.keys(preloadKey).length === 0) {
+      return;
+    } else {
+      privKey = preloadKey.toString();
+    }
+
+    if (privKey) {
+      signer = new NDKPrivateKeySigner(privKey);
+      isAuthenticated = true;
+    } else {
+      isAuthenticated = false;
+      showModal = true;
+      return;
+    }
+    selectedAuthor = localStorage.getItem("selected") || "";
+
     ndk = new NDK({
-      explicitRelayUrls: [relay],
+      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
       signer: signer,
     });
 
     try {
-      ndk.connect()
-        .then(() => console.log("connected"))
-        .then(() => loadOwnEvents())
-        .then(() => {
-          signer.user().then(u => {
-            pubKey = u.npub;
-        })})
-        .then(() => {
-          const profile = getUserProfile(ndk, pubKey);
-          this.avatar = profile.avatar || "";
-          this.name = profile.name || "";
-          this.city = profile.city || null;
-
-          if (selectedAuthor.length > 0) {
-            initConnectedMessages();
-          } else {
-            initMessages();
-          }
-        })
+      await ndk.connect();
     } catch (e) {
       console.log("unable to connect to relay");
     }
-    
-    // await loadOwnEvents();
-    // pubKey = (await signer.user()).npub;
-    // const profile = await getUserProfile(ndk, pubKey);
-    // avatar = profile.avatar || "";
-    // name = profile.name || "";
-    // city = profile.city || null;
+    console.log("connected")
+    await loadOwnEvents();
+    pubKey = (await signer.user()).npub;
+    const profile = await getUserProfile(ndk, pubKey);
+    avatar = profile.avatar || "";
+    name = profile.name || "";
+    city = profile.city || null;
 
-    // if (selectedAuthor.length > 0) {
-    //   await initConnectedMessages();
-    // } else {
-    //   await initMessages();
-    // }
+    if (selectedAuthor.length > 0) {
+      await initConnectedMessages();
+    } else {
+      await initMessages();
+    }
   });
 
   function isRootNote(event) {

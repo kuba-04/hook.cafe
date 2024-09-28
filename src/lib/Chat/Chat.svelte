@@ -2,7 +2,6 @@
   import isHotkey from "is-hotkey";
   import MessageView from "./ChatMessage.svelte";
   import { tick, onMount } from "svelte";
-  // import { RELAY_URL } from "$lib/Env";
   import { env } from '$env/dynamic/public';
   import { NDKEvent } from "@nostr-dev-kit/ndk";
   import { v4 as uuid } from "uuid";
