@@ -42,10 +42,9 @@
   let chatOpen = null;
   let loadingComplete;
 
-  // TODO
   // price slider
-  // let minValue;
-  // let maxValue;
+  let minValue;
+  let maxValue;
 
   // time picker
   let timeFrom = "12:00";
@@ -442,8 +441,8 @@
     }
 
     let loading = true;
-    // message.minPrice = minValue.toString();
-    // message.maxPrice = maxValue.toString();
+    message.minPrice = minValue.toString();
+    message.maxPrice = maxValue.toString();
     message.timeFrom = timeFrom;
     message.timeTo = timeTo;
     message.city = city;
@@ -521,7 +520,6 @@
     }
   }
 
-  // todo remove this
   function decodedKey() {
     return nip19.decode(pubKey).data;
   }
@@ -677,7 +675,7 @@
               </div>
 
               <!-- TODO: not working on mobile browsers -->
-              <!-- <p class="mt-4 text-lg leading-8 text-gray-300">
+              <p class="mt-4 text-lg leading-8 text-gray-300">
                 Your meal budget:
               </p>
               <div class="mt-6 flex max-w-md gap-x-4">
@@ -688,7 +686,7 @@
                 <span class="mt-4 text-lg leading-8 text-gray-300"
                   >{maxValue}</span
                 >
-              </div> -->
+              </div>
 
               <!-- alert -->
               {#if showAlertOnSubmittingInvalid}
@@ -768,7 +766,8 @@
                           alt=""
                         />
                       </div>
-                      <div class="min-w-0 flex-auto">
+                      <!-- <div class="min-w-0 flex items-center py-8"> -->
+                      <div class="grid grid-cols-1 gap-0">
                         <p class="text-sm truncate font-semibold text-white flex justify-start">
                           {parseEventContent(message).parsedContent.word1}
                           {parseEventContent(message).parsedContent.word2}
@@ -794,11 +793,11 @@
                     </small> -->
                     
                     <!-- TODO: -->
-                    <!-- <small class="text-xs leading-6 text-gray-400 truncate">
+                    <small class="text-xs leading-6 text-gray-400 truncate">
                       💵 {parseEventContent(message).parsedContent.minPrice} - {parseEventContent(
                         message
                         ).parsedContent.maxPrice}
-                      </small> -->
+                      </small>
                       <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
                     </div>
                 </li>
