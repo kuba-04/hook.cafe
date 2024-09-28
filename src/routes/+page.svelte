@@ -94,11 +94,7 @@
       setProfileData(ndk, name, city, avatar);
 
       
-      getUserProfile(ndk, pubKey).then(profile => {
-        name = profile.name || "";
-        city = profile.city || null;
-        avatar = profile.avatar || "";
-  
+      getUserProfile(ndk, pubKey).then(_ => {
         if (isMessageValid && name.length > 0) {
           handleSubmit();
         }      
