@@ -2,7 +2,6 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { VitePWA } from 'vite-plugin-pwa';
-import htmlPlugin from "vite-plugin-html-config"
 
 
 export default defineConfig({
@@ -37,9 +36,5 @@ export default defineConfig({
 			  ],
 			},
 		  }),
-		htmlPlugin({
-		// Add necessary meta tags and icons here
-		}),  
-		
 	]
 });
