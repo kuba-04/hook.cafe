@@ -18,7 +18,7 @@
   let loading = false;
   let isNameValid = false;
 
-  const switchHasAccount = () => {
+  const switchHasProfile = () => {
     hasAccount = !hasAccount;
   };
 
