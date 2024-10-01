@@ -1,5 +1,4 @@
 <script>
-  import { getUserProfile, setProfileData } from "$lib/authUtils";
   import Modal from "../../../lib/Modal.svelte";
   import NDK, { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
@@ -60,6 +59,14 @@
       });
   });
 
+  async function getUserProfile(ndk, pubKey) {
+    const user = ndk.getUser({
+      npub: pubKey,
+    });
+
+    return await user.fetchProfile();
+  }
+
   function selectAvatar(av) {
     selectedAvatar = av;
     showModal = false;
@@ -83,14 +90,27 @@
     }
 
     try {
-      const avatar = `${selectedAvatar}`;
-      await setProfileData(ndk, name, city, avatar);
-      goto("/", {state: privKey});
-    } catch (error) {
-      console.error("Error saving profile data:", error);
-      alert("Failed to save profile data. Please try again.");
+        const avatar = `${selectedAvatar}`;
+        await setProfileData(ndk, name, city, avatar);
+        goto("/", {state: privKey});
+      } catch (error) {
+        console.error("Error saving profile data:", error);
+        alert("Failed to save profile data. Please try again.");
+      }
     }
-  }
+
+    async function setProfileData(ndk, name, city, avatar) {
+      const metadataEvent = new NDKEvent(ndk);
+      metadataEvent.kind = 0;
+      const content = JSON.stringify({
+        name: name,
+        city: city,
+        avatar: avatar,
+      });
+      metadataEvent.content = content;
+      await metadataEvent.sign();
+      await metadataEvent.publish();
+    }
 
   function showAvatars() {
     showModal = true;

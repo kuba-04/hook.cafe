@@ -1,4 +1,5 @@
 node_modules
+package-lock.json
 
 # Output
 .output
@@ -23,3 +24,11 @@ vite.config.ts.timestamp-*
 
 # ide
 .idea
+
+# generated on build
+static/pwa-512x512.png
+static/pwa-192x192.png
+static/pwa-64x64.png
+static/maskable-icon-512x512.png
+static/apple-touch-icon-180x180.png
+/dev-dist
