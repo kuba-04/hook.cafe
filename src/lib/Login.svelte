@@ -134,7 +134,7 @@
       <p class="mt-10 text-center text-sm text-gray-500">
         Don't have the account?
         <button
-          on:click={switchHasAccount}
+          on:click={switchHasProfile}
           class="font-semibold leading-6 text-teal-600 hover:text-teal-500"
           >Register</button
         >
