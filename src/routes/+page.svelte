@@ -778,11 +778,15 @@
                 >
                     <div class="flex min-w-0 gap-x-7">
                       <div class="flex min-w-10 items-center">
-                        <img
-                          class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                          src={message.author && message.author.avatar}
-                          alt=""
-                        />
+                        {#if !message.author || !message.author.avatar}
+                          <div class="avatarLoader">Loading...</div>
+                        {:else}
+                          <img
+                            class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
+                            src={message.author && message.author?.avatar}
+                            alt=""
+                          />
+                        {/if}
                       </div>
                       <!-- <div class="min-w-0 flex items-center py-8"> -->
                       <div class="grid grid-cols-1 gap-0">
@@ -792,9 +796,13 @@
                           {parseEventContent(message).parsedContent.word3}
                           {parseEventContent(message).parsedContent.word4}
                         </p>
-                        <p class="mt-1 truncate text-xs flex justify-start text-gray-500">
-                          {message.author && message.author.name}
-                        </p>
+                        {#if !message.author || !message.author.name}
+                          <p class="mt-1 truncate text-xs flex justify-start text-gray-500">???</p>
+                        {:else}
+                          <p class="mt-1 truncate text-xs flex justify-start text-gray-500">
+                            {message.author && message.author.name}
+                          </p>
+                        {/if}
                       </div>
                     </div>
                   <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
@@ -853,3 +861,24 @@
     </div>
   </div>
 </main>
+
+<style>
+  /* avatar loader start */
+  .avatarLoader {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #3498db;
+    animation: spin 1s linear infinite;
+    margin: auto; 
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  /* avatar loader end */
+
+</style>
