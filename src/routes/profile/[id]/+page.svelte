@@ -1,6 +1,6 @@
 <script>
   import Modal from "../../../lib/Modal.svelte";
-  import NDK, { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+  import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
   import { env } from '$env/dynamic/public';
   import { goto } from "$app/navigation";
