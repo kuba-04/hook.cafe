@@ -30,7 +30,7 @@
   let city = null;
   let avatar = "";
   let privKey = null;
-  let pubKey = "";
+  let pubkey = "";
   let signer;
   let subscription;
   let messages = [];
@@ -86,21 +86,23 @@
       signer: signer,
     });
 
-    pubKey = (await (signer.user())).npub;
+    // (await new NDKPrivateKeySigner().user()).pubkey
+    pubkey = (await (signer.user())).pubkey;
 
     ndk.connect().then(() => {
-      setProfileData(ndk, name, city, avatar);   
-      getUserProfile(ndk, pubKey).then(_ => {
-        if (isMessageValid && name.length > 0) {
-          handleSubmit();
-        }      
-      })
+      setProfileData(ndk, name, city, avatar).then(() => {
+        getUserProfile(ndk, pubkey).then(_ => {
+          if (isMessageValid && name.length > 0) {
+            handleSubmit();
+          }      
+        })
+      }) 
     }).then(() => initMessages());
   }
 
-  async function getUserProfile(ndk, pubKey) {
+  async function getUserProfile(ndk, pubkey) {
     const user = ndk.getUser({
-      npub: pubKey,
+      pubkey
     });
 
     return await user.fetchProfile();
@@ -130,14 +132,14 @@
     isAuthenticated = true;
     showModal = false;
 
-    pubKey = (await signer.user()).npub; // todo: pubkey
-    const profile = await getUserProfile(ndk, pubKey);
+    pubkey = (await signer.user()).pubkey;
+    const profile = await getUserProfile(ndk, pubkey);
     name = profile.name || "";
     city = profile.city || null;
     avatar = profile.avatar || "";
 
     await loadOwnEvents();
-    if (selectedAuthor.length > 0) {
+    if (madeDecision()) {
       await initConnectedMessages();
     } else {
       await initMessages();
@@ -145,8 +147,7 @@
   }
 
   async function loadOwnEvents() {
-    const currentUserKey = (await signer.user()).pubkey; // todo: refactor all those currentUserKeys
-    const fetchSelectedFilter = { kinds: [1], authors: [currentUserKey], since: getBODTimestamp(), until: getEODTimestamp() };
+    const fetchSelectedFilter = { kinds: [1], authors: [pubkey], since: getBODTimestamp(), until: getEODTimestamp() };
     const submittedEvents = await ndk.fetchEvents(fetchSelectedFilter);
     submittedEvents.forEach((e) => {
       if (isRootNote(e)) {
@@ -158,11 +159,12 @@
     });
   }
 
-  function handleBeforeUnload(event) {
-    showAlertOnPageReload = true;
-    setTimeout(() => showAlertOnPageReload = false, 4000);
-    event.preventDefault();
-  }
+  // this is a try to prevent refreshing without logging out
+  // function handleBeforeUnload(event) {
+  //   showAlertOnPageReload = true;
+  //   setTimeout(() => showAlertOnPageReload = false, 4000);
+  //   event.preventDefault();
+  // }
   
   function getBODTimestamp() {
     const today = new Date();
@@ -208,24 +210,27 @@
     });
 
     try {
-      await ndk.connect();
+      await ndk.connect().then(() => console.log("connected"));
     } catch (e) {
       console.log("unable to connect to relay");
     }
-    console.log("connected")
+    pubkey = (await signer.user()).pubkey;
     await loadOwnEvents();
-    pubKey = (await signer.user()).npub;
-    const profile = await getUserProfile(ndk, pubKey);
+    const profile = await getUserProfile(ndk, pubkey);
     avatar = profile.avatar || "";
     name = profile.name || "";
     city = profile.city || null;
 
-    if (selectedAuthor.length > 0) {
+    if (madeDecision()) {
       await initConnectedMessages();
     } else {
       await initMessages();
     }
   });
+
+  function madeDecision() {
+    return selectedAuthor.length > 0;
+  }
 
   function isRootNote(event) {
     return event.kind === 1 && !event.tags.some((tag) => tag[0] === "e");
@@ -289,12 +294,11 @@
       );
 
     // 3. replies: to mine & to selected
-    const currentUserKey = signer.user().pubkey;
     ndk.fetchEvents(KIND_1_FILTER).then((notes) => {
       notes.forEach((note) => {
         if (
           isReplyNote(note) &&
-          (note.getMatchingTags("e", currentUserKey) !== null ||
+          (note.getMatchingTags("e", pubkey) !== null ||
             note.getMatchingTags("e", selectedAuthor) !== null)
         ) {
           addMessage(note).then(() => fetchUserProfile(note.pubkey));
@@ -365,7 +369,7 @@
   }
 
   async function select(event) {
-    if (selectedAuthor.length > 0) {
+    if (madeDecision()) {
       return;
     }
     if (submitted === null) {
@@ -538,12 +542,8 @@
     }
   }
 
-  function decodedKey() {
-    return nip19.decode(pubKey).data;
-  }
-
   function navigateToProfile() {
-    const id = pubKey;
+    const id = nip19.npubEncode(pubkey);
     goto(`/profile/${id}`, { state: privKey });
   }
 </script>
@@ -564,7 +564,7 @@
 
     <div class="w-full max-w-4xl py-16 sm:py-24 lg:py-32">
       {#if isAuthenticated}
-        {#if selectedAuthor.length > 0}
+        {#if madeDecision()}
           <div class="absolute top-5 left-10 items-center">
             <p class="text-lg text-gray-300">
               Building {city && city.cityName} group<span class="animate-ping"
@@ -745,7 +745,7 @@
             class="bg-gray-900 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"
           >
             <div class="max-w-4xl max-y-md py-16 sm:py-24 lg:py-32">
-              <Chat {ndk} username={name} {channelId} signerKey={decodedKey()}
+              <Chat {ndk} username={name} {channelId} signerKey={pubkey}
               ></Chat>
             </div>
           </div>
@@ -818,7 +818,6 @@
                       added {new Date(message.created_at * 1000).toLocaleTimeString([], {timeStyle: 'short'}) }
                     </small> -->
                     
-                    <!-- TODO: -->
                     <small class="text-xs leading-6 text-gray-400 truncate">
                       💵 {parseEventContent(message).parsedContent.minPrice} - {parseEventContent(
                         message
@@ -828,7 +827,7 @@
                     </div>
                 </li>
               {/each}
-              {#if selectedAuthor.length > 0 && messages.length < 4}
+              {#if madeDecision() && messages.length < 4}
                 <li class="flex justify-between gap-x-3 px-4 py-5">
                   <div class="place-content-center min-w-0 gap-x-4">
                     <span class="text-gray-400"
@@ -843,7 +842,7 @@
           </dl>
 
           <div>
-            {#if selectedAuthor.length > 0 && messages.length > 3 && !chatOpen && loadingComplete}
+            {#if madeDecision() && messages.length > 3 && !chatOpen && loadingComplete}
               <button
                 on:click={openOrJoinChat}
                 type="button"

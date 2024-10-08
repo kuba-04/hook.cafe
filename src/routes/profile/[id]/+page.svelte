@@ -8,11 +8,12 @@
   import PasswordDisplay from "$lib/PasswordDisplay.svelte";
   import citiesData from "../../../lib/cities.json";
   import { page } from '$app/stores';
+  import { nip19 } from "nostr-tools";
 
   let selectedAvatar = "";
   let ndk;
   let name = "";
-  let pubKey;
+  let npub;
   let privKey;
   let avatar = "";
   let showModal = false;
@@ -28,8 +29,8 @@
 
   onMount(async () => {
     avatars = getAllAvatars();
-    pubKey = $page.params.id;
-    if (!pubKey) {
+    npub = $page.params.id;
+    if (!npub) {
       console.log("not found")
       goto("/");
     }
@@ -42,16 +43,14 @@
     ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
     await ndk.connect();
 
-    const user = await signer.user();
-    pubKey = user.npub;
-    const profile = await getUserProfile(ndk, pubKey);
+    const profile = await getUserProfile(ndk, npub);
     name = profile.name || "";
     city = profile.city || null;
     query = `${city.cityName}, ${city.cityCountry}`;
     avatar = profile.avatar || "";
 
     await ndk
-      .fetchEvents({ kinds: [1], authors: [user.pubkey] })
+      .fetchEvents({ kinds: [1], authors: [npub] })
       .then((events) => {
         if (events.size > 0) {
           hasAlreadySubmitted = true;
@@ -59,9 +58,9 @@
       });
   });
 
-  async function getUserProfile(ndk, pubKey) {
+  async function getUserProfile(ndk, npub) {
     const user = ndk.getUser({
-      npub: pubKey,
+      npub
     });
 
     return await user.fetchProfile();
@@ -147,13 +146,17 @@
 
   function copyNpub() {
     navigator.clipboard
-      .writeText(pubKey)
+      .writeText(npub)
       .then(() => {
         showAlertOnCopyNpub = true;
       })
       .catch((err) => {
         console.error("Failed to copy: ", err);
       }).finally(() => setTimeout(() => showAlertOnCopyNpub = false, 1500));
+  }
+
+  function nsec(hexKey) {
+    return nip19.nsecEncode(hexKey);
   }
 </script>
 
@@ -376,7 +379,7 @@
               <p
                 class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-2 sm:mt-0 break-words"
               >
-                {pubKey}
+                {npub}
               </p>
             </dd>
             <div class="left-10 flex items-center">
@@ -405,7 +408,9 @@
               <p
                 class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-2 sm:mt-0 break-words"
               >
-                <PasswordDisplay password={privKey} />
+              {#if privKey}
+                <PasswordDisplay password={nsec(privKey)} />
+              {/if}
               </p>
             </dd>
           </div>

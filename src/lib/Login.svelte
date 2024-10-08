@@ -3,9 +3,12 @@
   import { getRandomAvatar } from './avatars';
   import citiesData from './cities.json';
   import { NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
+  import { nip19 } from "nostr-tools";
 
   export let name = "";
+  export let secretKey = ""; // we allow to log in with either hex and nsec
   export let privKey = "";
+  export let nsec = "";
 
   let query = '';
   let results = [];
@@ -47,6 +50,25 @@
 
   const handleSignin = async () => {
     loading = true;
+
+    if (secretKey && secretKey.startsWith("nsec")) {
+      try {
+        privKey = nip19.decode(secretKey).data;
+        new NDKPrivateKeySigner(privKey);
+        nsec = secretKey;
+      } catch (e) {
+        console.log("invalid key");
+      }
+    } else {
+      try {
+        new NDKPrivateKeySigner(secretKey);
+        privKey = secretKey;
+        nsec = nip19.nsecEncode(privKey);
+      } catch (e) {
+        console.log("invalid key");
+      }
+    }
+
     try {
       new NDKPrivateKeySigner(privKey);
       dispatchLoggedInEvent(privKey);
@@ -107,16 +129,16 @@
       <form class="form-widget" on:submit|preventDefault="{handleSignin}">
         <div>
           <label
-            for="privkey"
+            for="secretKey"
             class="block text-sm font-medium leading-6 text-gray-900"
             >Private key</label
           >
           <div class="mt-2">
             <input
-              id="privkey"
+              id="secretKey"
               class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
               type="password"
-              bind:value={privKey}
+              bind:value={secretKey}
             /> 
           </div>
         </div>
