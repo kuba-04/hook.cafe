@@ -562,10 +562,16 @@
       <OnPageLoadAlert />
     {/if}
 
-    <div class="w-full max-w-4xl py-16 sm:py-24 lg:py-32">
+    <div class="w-full max-w-4xl">
+      <div class="absolute top-0 left-10 items-center">
+        <a href="/">
+          <img src="/logo_wtr.png" alt="logo" class="h-20" />
+        </a>
+      </div>
       {#if isAuthenticated}
-        {#if madeDecision()}
-          <div class="absolute top-5 left-10 items-center">
+      <!-- todo: decide if the below info is helping or confusing -->
+        <!-- {#if madeDecision()}
+          <div class="absolute top-25 left-10 items-center">
             <p class="text-lg text-gray-300">
               Building {city && city.cityName} group<span class="animate-ping"
                 >...</span
@@ -573,12 +579,12 @@
             </p>
           </div>
         {:else if submitted && city && city.cityName}
-          <div class="absolute top-5 left-10 items-center">
+          <div class="absolute top-15 left-10 py-10 text-center">
             <p class="text-lg text-gray-300">
-              Hello {city && city.cityName} people!<br class="md:hide" />
+              Who else is up for a food in {city && city.cityName}?<br class="md:hide" />
             </p>
           </div>
-        {/if}
+        {/if} -->
         <div class="absolute top-0 right-10 h-16">
           <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
             <button on:click={navigateToProfile}>
@@ -601,7 +607,7 @@
       >
         <!-- form -->
         {#if !submitted}
-          <div class="flex flex-col place-content-center">
+          <div class="flex flex-col place-content-center my-20 ">
             <div class="max-w-xl lg:max-w-lg">
               <h2
                 class="text-3xl font-bold tracking-tight text-white sm:text-4xl"
