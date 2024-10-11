@@ -24,3 +24,6 @@ docker run --name hookcafe -p 3000:3000 hookcafe
 # or you can pass relay URL:
 docker run --name hookcafe -e PUBLIC_RELAY_URL=wss://your-nostr-relay.com -p 3000:3000 hookcafe
 ```
+#### macos
+for macos build you may need to make these changes:
+![alt text](image.png)
