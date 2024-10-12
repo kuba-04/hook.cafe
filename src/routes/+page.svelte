@@ -584,9 +584,13 @@
           <div>
             <!-- placeholder for menu / about -->
           </div>
-          <div >
+          <div>
             <a href="/">
-              <img src="/logo_wtr.png" alt="logo" class="h-20" />
+              <img 
+                src="/logo_wtr.png" 
+                alt="logo" 
+                class="h-20 transition-transform duration-900 ease-in-out transform hover:scale-150" 
+                />
             </a>
           </div>
           {#if isAuthenticated}
