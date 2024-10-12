@@ -555,7 +555,7 @@
     </Modal>
   {/if}
   <div
-    class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"
+    class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex justify-center px-4 sm:px-6 lg:px-8"
   >
     <!-- alert -->
     {#if showAlertOnPageReload}
@@ -563,42 +563,51 @@
     {/if}
 
     <div class="w-full max-w-4xl">
-      <div class="absolute top-0 left-10 items-center">
-        <a href="/">
-          <img src="/logo_wtr.png" alt="logo" class="h-20" />
-        </a>
-      </div>
-      {#if isAuthenticated}
-      <!-- todo: decide if the below info is helping or confusing -->
-        <!-- {#if madeDecision()}
-          <div class="absolute top-25 left-10 items-center">
-            <p class="text-lg text-gray-300">
-              Building {city && city.cityName} group<span class="animate-ping"
-                >...</span
-              >
-            </p>
+      <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
+        <div class="flex justify-between">
+          <!-- todo: decide if the below info is helping or confusing -->
+            <!-- {#if madeDecision()}
+              <div class="absolute top-25 left-10 items-center">
+                <p class="text-lg text-gray-300">
+                  Building {city && city.cityName} group<span class="animate-ping"
+                    >...</span
+                  >
+                </p>
+              </div>
+            {:else if submitted && city && city.cityName}
+              <div class="absolute top-15 left-10 py-10 text-center">
+                <p class="text-lg text-gray-300">
+                  Who else is up for a food in {city && city.cityName}?<br class="md:hide" />
+                </p>
+              </div>
+            {/if} -->
+          <div>
+            <!-- placeholder for menu / about -->
           </div>
-        {:else if submitted && city && city.cityName}
-          <div class="absolute top-15 left-10 py-10 text-center">
-            <p class="text-lg text-gray-300">
-              Who else is up for a food in {city && city.cityName}?<br class="md:hide" />
-            </p>
+          <div >
+            <a href="/">
+              <img src="/logo_wtr.png" alt="logo" class="h-20" />
+            </a>
           </div>
-        {/if} -->
-        <div class="absolute top-0 right-10 h-16">
-          <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
-            <button on:click={navigateToProfile}>
-              <img
-                class="w-12 h-12 p-1 rounded-full ring-2 hover:ring-0 ring-gray-300 hover:bg-yellow-100"
-                src={avatar}
-                alt="avatar"
-              />
-            </button>
-          </p>
+          {#if isAuthenticated}
+            <div class="">
+              <p class="mt-4 text-lg leading-8 text-gray-300 items-end">
+                <button on:click={navigateToProfile}>
+                  <img
+                    class="w-12 h-12 p-1 rounded-full ring-2 hover:ring-0 ring-gray-300 hover:bg-yellow-100"
+                    src={avatar}
+                    alt="avatar"
+                  />
+                </button>
+              </p>
+            </div>
+          {:else}
+            <div class="w-12 h-12">
+              <!-- placeholder to keep the column for avatar -->
+            </div>
+          {/if}
         </div>
-      {/if}
-
-      
+      </div>
 
       <div
         class={(submitted || !isAuthenticated) && !chatOpen
