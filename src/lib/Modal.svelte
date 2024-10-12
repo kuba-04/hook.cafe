@@ -37,6 +37,8 @@
     border-radius: 1em;
     border: none;
     padding: 0;
+    opacity: 90%;
+    background-color:antiquewhite;
   }
   dialog::backdrop {
     background: rgba(0, 0, 0, 0.3);

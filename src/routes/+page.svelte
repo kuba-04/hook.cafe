@@ -609,21 +609,26 @@
         </div>
       </div>
 
-      <div
+      <!-- <div
         class={(submitted || !isAuthenticated) && !chatOpen
+          ? "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-1"
+          : "mx-auto grid max-w-2xl grid-cols-1 gap-x-20 lg:max-w-none lg:grid-cols-2"}
+      > -->
+      <div
+        class={submitted && !chatOpen
           ? "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-1"
           : "mx-auto grid max-w-2xl grid-cols-1 gap-x-20 lg:max-w-none lg:grid-cols-2"}
       >
         <!-- form -->
         {#if !submitted}
-          <div class="flex flex-col place-content-center my-20 ">
+          <div class="flex flex-col place-content-center my-10">
             <div class="max-w-xl lg:max-w-lg">
               <h2
                 class="text-3xl font-bold tracking-tight text-white sm:text-4xl"
               >
-                Enjoy meal with similar people around you
+                Quick lunch or coffee with friendly people around you?
               </h2>
-              <p class="mt-4 text-lg leading-8 text-gray-300">Your 4 words:</p>
+              <p class="mt-4 text-lg leading-8 text-gray-300">What do you want to talk about today? <br>(only 4 words)</p>
               <div class="mt-6 flex max-w-md gap-x-4">
                 <label for="word-1" class="sr-only">Word 1</label>
                 <input
@@ -674,7 +679,7 @@
                 />
               </div>
               <p class="mt-4 text-lg leading-8 text-gray-300">
-                Where you can meet?
+                Where can you meet?
               </p>
               <!-- location -->
               <div class="mt-6 flex-direction max-w-md gap-x-4">
@@ -687,11 +692,11 @@
                   type="text"
                   required
                   class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-                  placeholder="District or street"
+                  placeholder="Street or borough"
                 />
               </div>
               <p class="mt-4 text-lg leading-8 text-gray-300">
-                Your meal time:
+                When?
               </p>
               <!-- timepicker -->
               <div class="mt-6 flex max-w-md gap-x-4">
@@ -803,8 +808,7 @@
                           />
                         {/if}
                       </div>
-                      <!-- <div class="min-w-0 flex items-center py-8"> -->
-                      <div class="grid grid-cols-1 gap-0">
+                      <div class="grid grid-cols-1 gap-0 items-center">
                         <p class="text-sm truncate font-semibold text-white flex justify-start">
                           {parseEventContent(message).parsedContent.word1}
                           {parseEventContent(message).parsedContent.word2}
@@ -852,6 +856,10 @@
                     >
                   </div>
                 </li>
+              {:else if messages.length === 0}
+                <div class="divide-y divide-gray-100 mt-5">
+                  <img alt="front-img" src="/images/photos/hook_front.png"/>
+                </div>
               {/if}
             </ul>
           </dl>
