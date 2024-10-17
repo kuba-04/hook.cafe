@@ -812,7 +812,7 @@
                           />
                         {/if}
                       </div>
-                      <div class="grid grid-cols-1 gap-0 items-center">
+                      <div class="grid grid-cols-1 gap-0 content-center">
                         <p class="text-sm truncate font-semibold text-white flex justify-start">
                           {parseEventContent(message).parsedContent.word1}
                           {parseEventContent(message).parsedContent.word2}
