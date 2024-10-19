@@ -585,7 +585,7 @@
             <!-- placeholder for menu / about -->
           </div>
           <div>
-            <a href="/">
+            <a href="/inspiration">
               <img 
                 src="/logo_wtr.png" 
                 alt="logo" 
