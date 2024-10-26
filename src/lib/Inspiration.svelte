@@ -56,7 +56,7 @@
             on:mouseleave={toggleImages}
         >
             <h1 class="text-6xl font-bold text-center text-gray-700 py-5">#1</h1>
-            <h1 class="text-4xl font-bold text-center text-gray-700 py-5">Choose your keywords, rough location and time</h1>
+            <h1 class="text-4xl font-bold text-center text-gray-700 py-5">Choose your keywords, location and time</h1>
         </div>
     </div>
     <div 
@@ -69,7 +69,7 @@
             on:mouseleave={toggleImages}
         >
             <h1 class="text-6xl font-bold text-center text-gray-700 py-5">#1</h1>
-            <h1 class="text-4xl font-bold text-center text-gray-700 py-5">Choose your keywords, rough location and time</h1>
+            <h1 class="text-4xl font-bold text-center text-gray-700 py-5">Choose your keywords, location and time</h1>
         </div>
     </div>
 </section>

@@ -9,7 +9,7 @@
     <div class="container mx-auto flex md:flex-row justify-evenly">
       <div class="text-center md:text-left">
         <!-- <p class="text-lg font-semibold">Hook Cafe</p> -->
-        <p class="mt-2 text-sm">Inspired in Beirut <br>by <a class="hover:underline" href="https://www.instagram.com/hook.beirut/" target="_blank">real Hook Cafe</a></p>
+        <p class="mt-2 text-sm">Inspired in Beirut by<br><a class="hover:underline" href="https://www.instagram.com/hook.beirut/" target="_blank">the real Hook Cafe</a></p>
       </div>
   
       <div class="mt-4">

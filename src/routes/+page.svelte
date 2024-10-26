@@ -71,6 +71,12 @@
   let showAlertOnSelectingSelf = false;
   let showAlertOnPageReload = false;
 
+  let isImageCartoon = true;
+
+  const toggleMainImage = () => {
+    isImageCartoon = !isImageCartoon;
+  };
+
   async function handleRegister(event) {
     name = event.detail.name;
     city = event.detail.city;
@@ -648,7 +654,7 @@
               <h2
                 class="text-3xl font-bold tracking-tight text-white sm:text-4xl"
               >
-                Quick lunch or coffee with friendly people around you?
+                Quick meet with friendly people around?
               </h2>
               <p class="mt-4 text-lg leading-8 text-gray-300">What do you want to talk about today? <br>(only 4 words)</p>
               <div class="mt-6 flex max-w-md gap-x-4">
@@ -882,7 +888,14 @@
                 <div class="divide-y divide-gray-100 mt-5">
                   <Tooltip text="Get inspired!" position="center">
                     <button on:click={openInspirationModal}>
-                      <img alt="front-img" src="/images/photos/hook_front.png"/>
+                      <div class="inspire-img" on:mouseenter={toggleMainImage} on:mouseleave={toggleMainImage}>
+                        <div class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? 'opacity-0' : 'opacity-100'}`}>
+                          <img alt="front-img" src="/images/photos/hook_front.jpg" class="w-full h-full object-cover" />
+                        </div>
+                        <div class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? 'opacity-100' : 'opacity-0'}`}>
+                          <img alt="cartoon-img" src="/images/photos/hook_front_cartoon.png" class="w-full h-full object-cover" />
+                        </div>
+                      </div>
                     </button>
                   </Tooltip>
                 </div>
@@ -929,4 +942,16 @@
   }
   /* avatar loader end */
 
+
+  .inspire-img {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: hidden;
+  }
+
+  .inspire-img div {
+    grid-row-start: 1;
+    grid-column-start: 1;
+    position: relative;
+  }
 </style>
