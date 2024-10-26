@@ -18,6 +18,9 @@
   import OnSubmittingSuccessAlert from "$lib/alerts/OnSubmittingSuccessAlert.svelte";
   import OnSelectingSelfAlert from "$lib/alerts/OnSelectingSelfAlert.svelte";
   import OnSelectUnsubmittedAlert from "$lib/alerts/OnSelectUnsubmittedAlert.svelte";
+  import Inspiration from "$lib/Inspiration.svelte";
+  import InspirationModal from "$lib/InspirationModal.svelte";
+  import Tooltip from '$lib/Tooltip.svelte';
 
   const PROFILE_FILTER = { kinds: [0] };
   const KIND_1_FILTER = { kinds: [1], since: getBODTimestamp(), until: getEODTimestamp() };
@@ -25,6 +28,8 @@
 
   let ndk;
   let showModal = false;
+  let showInspirationModal = false;
+  
   let isAuthenticated = false;
   let name = "";
   let city = null;
@@ -546,6 +551,14 @@
     const id = nip19.npubEncode(pubkey);
     goto(`/profile/${id}`, { state: privKey });
   }
+
+  function openInspirationModal() {
+    showInspirationModal = true;
+  }
+
+  function closeModal() {
+    showInspirationModal = false;
+  }
 </script>
 
 <main>
@@ -553,6 +566,11 @@
     <Modal bind:showModal>
       <Login on:register={handleRegister} on:login={handleLogin} />
     </Modal>
+  {/if}
+  {#if showInspirationModal}
+    <InspirationModal bind:showInspirationModal>
+      <Inspiration onClose={closeModal}/>
+    </InspirationModal>
   {/if}
   <div
     class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex justify-center px-4 sm:px-6 lg:px-8"
@@ -585,13 +603,13 @@
             <!-- placeholder for menu / about -->
           </div>
           <div>
-            <a href="/inspiration">
-              <img 
-                src="/logo_wtr.png" 
-                alt="logo" 
-                class="h-20 transition-transform duration-900 ease-in-out transform hover:scale-150" 
-                />
-            </a>
+            <!-- <button on:click={openInspirationModal}> -->
+            <img 
+              src="/logo_wtr.png" 
+              alt="logo" 
+              class="h-20 transition-transform duration-900 ease-in-out transform hover:scale-150" 
+              />
+            <!-- </button> -->
           </div>
           {#if isAuthenticated}
             <div class="">
@@ -718,7 +736,7 @@
 
               <!-- TODO: not working on mobile browsers -->
               <p class="mt-4 text-lg leading-8 text-gray-300">
-                Your meal budget:
+                Your food budget:
               </p>
               <div class="mt-6 flex max-w-md gap-x-4">
                 <span class="mt-4 text-lg leading-8 text-gray-300"
@@ -862,7 +880,11 @@
                 </li>
               {:else if messages.length === 0}
                 <div class="divide-y divide-gray-100 mt-5">
-                  <img alt="front-img" src="/images/photos/hook_front.png"/>
+                  <Tooltip text="Get inspired!" position="center">
+                    <button on:click={openInspirationModal}>
+                      <img alt="front-img" src="/images/photos/hook_front.png"/>
+                    </button>
+                  </Tooltip>
                 </div>
               {/if}
             </ul>
