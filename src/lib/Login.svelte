@@ -245,7 +245,7 @@
       </div> -->
 
       <p class="mt-10 text-center text-sm text-gray-500">
-        Already have profile?
+        Been here before?
         <button
           on:click={switchHasProfile}
           class="font-semibold leading-6 text-teal-600 hover:text-teal-500"

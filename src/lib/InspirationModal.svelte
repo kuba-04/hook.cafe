@@ -1,9 +1,13 @@
 <script>
-  export let showModal; // boolean
+    import Footer from "./Footer.svelte";
+
+  export let showInspirationModal; // boolean
 
   let dialog; // HTMLDialogElement
 
-  $: if (dialog && showModal) dialog.showModal();
+  $: if (dialog && showInspirationModal) {
+    dialog.showModal();
+  }
 
   export function closeModal() {
     dialog.close();
@@ -13,7 +17,7 @@
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
 <dialog
   bind:this={dialog}
-  on:close={() => (showModal = false)}
+  on:close={() => (showInspirationModal = false)}
   on:click|self={() => dialog.close()}
 >
   <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -21,27 +25,29 @@
     <slot name="header" />
     <slot />
     <div class="absolute top-0 right-0 h-16 w-16">
-      <p class="mt-4 text-lg leading-8 text-gray-600 items-end">
-        <button on:click={() => dialog.close()} >close</button>
+      <p class="mt-4 text-4xl leading-8 text-black items-end">
+        <button on:click={() => dialog.close()} >✖️</button>
       </p>
     </div>
   </div>
+  <Footer />
 </dialog>
 
 <style lang="postcss">
-    ::content {
-      background-color: rgb(17, 16, 15);
-    }
+  ::content {
+    background-color: rgb(17, 16, 15);
+  }
   dialog {
-    max-width: 32em;
     border-radius: 1em;
     border: none;
     padding: 0;
     opacity: 90%;
-    background-color:antiquewhite;
+    background-color:black;
+    overflow: auto;
+    width: 100%;
   }
   dialog::backdrop {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 1);
   }
   dialog > div {
     padding: 1em;
@@ -70,5 +76,9 @@
   }
   button {
     display: block;
+  }
+
+  body.overflow-hidden {
+    overflow: hidden;
   }
 </style>

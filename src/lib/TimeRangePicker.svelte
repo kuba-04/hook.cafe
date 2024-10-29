@@ -32,7 +32,6 @@
   
   <style>
     .time-picker {
-      margin-bottom: 20px;
       display: flex;
       align-items: center;
       gap: 20px;

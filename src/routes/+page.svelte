@@ -18,6 +18,9 @@
   import OnSubmittingSuccessAlert from "$lib/alerts/OnSubmittingSuccessAlert.svelte";
   import OnSelectingSelfAlert from "$lib/alerts/OnSelectingSelfAlert.svelte";
   import OnSelectUnsubmittedAlert from "$lib/alerts/OnSelectUnsubmittedAlert.svelte";
+  import Inspiration from "$lib/Inspiration.svelte";
+  import InspirationModal from "$lib/InspirationModal.svelte";
+  import Tooltip from '$lib/Tooltip.svelte';
 
   const PROFILE_FILTER = { kinds: [0] };
   const KIND_1_FILTER = { kinds: [1], since: getBODTimestamp(), until: getEODTimestamp() };
@@ -25,6 +28,8 @@
 
   let ndk;
   let showModal = false;
+  let showInspirationModal = false;
+  
   let isAuthenticated = false;
   let name = "";
   let city = null;
@@ -65,6 +70,12 @@
   let showAlertOnSubmittingSuccess = false;
   let showAlertOnSelectingSelf = false;
   let showAlertOnPageReload = false;
+
+  let isImageCartoon = true;
+
+  const toggleMainImage = () => {
+    isImageCartoon = !isImageCartoon;
+  };
 
   async function handleRegister(event) {
     name = event.detail.name;
@@ -546,6 +557,14 @@
     const id = nip19.npubEncode(pubkey);
     goto(`/profile/${id}`, { state: privKey });
   }
+
+  function openInspirationModal() {
+    showInspirationModal = true;
+  }
+
+  function closeModal() {
+    showInspirationModal = false;
+  }
 </script>
 
 <main>
@@ -553,6 +572,11 @@
     <Modal bind:showModal>
       <Login on:register={handleRegister} on:login={handleLogin} />
     </Modal>
+  {/if}
+  {#if showInspirationModal}
+    <InspirationModal bind:showInspirationModal>
+      <Inspiration onClose={closeModal}/>
+    </InspirationModal>
   {/if}
   <div
     class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex justify-center px-4 sm:px-6 lg:px-8"
@@ -584,10 +608,14 @@
           <div>
             <!-- placeholder for menu / about -->
           </div>
-          <div >
-            <a href="/">
-              <img src="/logo_wtr.png" alt="logo" class="h-20" />
-            </a>
+          <div>
+            <!-- <button on:click={openInspirationModal}> -->
+            <img 
+              src="/logo_wtr.png" 
+              alt="logo" 
+              class="h-20 transition-transform duration-900 ease-in-out transform hover:scale-150" 
+              />
+            <!-- </button> -->
           </div>
           {#if isAuthenticated}
             <div class="">
@@ -609,21 +637,26 @@
         </div>
       </div>
 
-      <div
+      <!-- <div
         class={(submitted || !isAuthenticated) && !chatOpen
+          ? "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-1"
+          : "mx-auto grid max-w-2xl grid-cols-1 gap-x-20 lg:max-w-none lg:grid-cols-2"}
+      > -->
+      <div
+        class={submitted && !chatOpen
           ? "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-1"
           : "mx-auto grid max-w-2xl grid-cols-1 gap-x-20 lg:max-w-none lg:grid-cols-2"}
       >
         <!-- form -->
         {#if !submitted}
-          <div class="flex flex-col place-content-center my-20 ">
+          <div class="flex flex-col place-content-center my-10">
             <div class="max-w-xl lg:max-w-lg">
               <h2
                 class="text-3xl font-bold tracking-tight text-white sm:text-4xl"
               >
-                Enjoy meal with similar people around you
+                Quick meet with friendly people around?
               </h2>
-              <p class="mt-4 text-lg leading-8 text-gray-300">Your 4 words:</p>
+              <p class="mt-4 text-lg leading-8 text-gray-300">What do you want to talk about today? <br>(only 4 words)</p>
               <div class="mt-6 flex max-w-md gap-x-4">
                 <label for="word-1" class="sr-only">Word 1</label>
                 <input
@@ -674,7 +707,7 @@
                 />
               </div>
               <p class="mt-4 text-lg leading-8 text-gray-300">
-                Where you can meet?
+                Where can you meet?
               </p>
               <!-- location -->
               <div class="mt-6 flex-direction max-w-md gap-x-4">
@@ -687,11 +720,11 @@
                   type="text"
                   required
                   class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-                  placeholder="District or street"
+                  placeholder="Street or borough"
                 />
               </div>
               <p class="mt-4 text-lg leading-8 text-gray-300">
-                Your meal time:
+                When?
               </p>
               <!-- timepicker -->
               <div class="mt-6 flex max-w-md gap-x-4">
@@ -709,7 +742,7 @@
 
               <!-- TODO: not working on mobile browsers -->
               <p class="mt-4 text-lg leading-8 text-gray-300">
-                Your meal budget:
+                Your food budget:
               </p>
               <div class="mt-6 flex max-w-md gap-x-4">
                 <span class="mt-4 text-lg leading-8 text-gray-300"
@@ -803,8 +836,7 @@
                           />
                         {/if}
                       </div>
-                      <!-- <div class="min-w-0 flex items-center py-8"> -->
-                      <div class="grid grid-cols-1 gap-0">
+                      <div class="grid grid-cols-1 gap-0 content-center">
                         <p class="text-sm truncate font-semibold text-white flex justify-start">
                           {parseEventContent(message).parsedContent.word1}
                           {parseEventContent(message).parsedContent.word2}
@@ -852,6 +884,21 @@
                     >
                   </div>
                 </li>
+              {:else if messages.length === 0}
+                <div class="divide-y divide-gray-100 mt-5">
+                  <Tooltip text="Get inspired!" position="center">
+                    <button on:click={openInspirationModal}>
+                      <div class="inspire-img" on:mouseenter={toggleMainImage} on:mouseleave={toggleMainImage}>
+                        <div class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? 'opacity-0' : 'opacity-100'}`}>
+                          <img alt="front-img" src="/images/photos/hook_front.jpg" class="w-full h-full object-cover" />
+                        </div>
+                        <div class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? 'opacity-100' : 'opacity-0'}`}>
+                          <img alt="cartoon-img" src="/images/photos/hook_front_cartoon.png" class="w-full h-full object-cover" />
+                        </div>
+                      </div>
+                    </button>
+                  </Tooltip>
+                </div>
               {/if}
             </ul>
           </dl>
@@ -895,4 +942,16 @@
   }
   /* avatar loader end */
 
+
+  .inspire-img {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: hidden;
+  }
+
+  .inspire-img div {
+    grid-row-start: 1;
+    grid-column-start: 1;
+    position: relative;
+  }
 </style>
