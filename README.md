@@ -27,3 +27,7 @@ docker run --name hookcafe -e PUBLIC_RELAY_URL=wss://your-nostr-relay.com -p 300
 #### macos
 for macos build you may need to make these changes:
 ![alt text](macos.png)
+
+
+##### Attribution
+The project uses photos/images from https://unsplash.com/.
