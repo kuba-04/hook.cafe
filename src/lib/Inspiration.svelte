@@ -114,7 +114,7 @@
 <section class="relative flex items-center justify-center h-screen bg-black">
     <div 
         class={`absolute inset-0 transition-opacity duration-1000 ease-in-out bg-cover bg-center ${isImage1 ? 'opacity-100' : 'opacity-0'}`} 
-        style="background-image: url('/images/inspiration/table.jpg'); background-position: center; background-size: cover;">
+        style="background-image: url('/images/inspiration/table-cartoon.png'); background-position: center; background-size: cover;">
         <div 
             class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md" 
             style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
