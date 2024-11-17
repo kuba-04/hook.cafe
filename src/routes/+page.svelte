@@ -1,12 +1,12 @@
 <script>
   import { onMount } from "svelte";
 
-  import { browser } from '$app/environment';
+  import { browser } from "$app/environment";
   import Modal from "../lib/Modal.svelte";
   import Login from "$lib/Login.svelte";
   import Slider from "../lib/Slider.svelte";
   import { goto } from "$app/navigation";
-  import { env } from '$env/dynamic/public';
+  import { env } from "$env/dynamic/public";
   import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
@@ -20,16 +20,20 @@
   import OnSelectUnsubmittedAlert from "$lib/alerts/OnSelectUnsubmittedAlert.svelte";
   import Inspiration from "$lib/Inspiration.svelte";
   import InspirationModal from "$lib/InspirationModal.svelte";
-  import Tooltip from '$lib/Tooltip.svelte';
+  import Tooltip from "$lib/Tooltip.svelte";
 
   const PROFILE_FILTER = { kinds: [0] };
-  const KIND_1_FILTER = { kinds: [1], since: getBODTimestamp(), until: getEODTimestamp() };
+  const KIND_1_FILTER = {
+    kinds: [1],
+    since: getBODTimestamp(),
+    until: getEODTimestamp(),
+  };
   const KIND_40_FILTER = { kinds: [40] };
 
   let ndk;
   let showModal = false;
   let showInspirationModal = false;
-  
+
   let isAuthenticated = false;
   let name = "";
   let city = null;
@@ -88,7 +92,7 @@
       showModal = false;
       privKey = signer.privateKey;
     } else {
-      console.log('Registration error. Try again');
+      console.log("Registration error. Try again");
       return;
     }
 
@@ -98,22 +102,25 @@
     });
 
     // (await new NDKPrivateKeySigner().user()).pubkey
-    pubkey = (await (signer.user())).pubkey;
+    pubkey = (await signer.user()).pubkey;
 
-    ndk.connect().then(() => {
-      setProfileData(ndk, name, city, avatar).then(() => {
-        getUserProfile(ndk, pubkey).then(_ => {
-          if (isMessageValid && name.length > 0) {
-            handleSubmit();
-          }      
-        })
-      }) 
-    }).then(() => initMessages());
+    ndk
+      .connect()
+      .then(() => {
+        setProfileData(ndk, name, city, avatar).then(() => {
+          getUserProfile(ndk, pubkey).then((_) => {
+            if (isMessageValid && name.length > 0) {
+              handleSubmit();
+            }
+          });
+        });
+      })
+      .then(() => initMessages());
   }
 
   async function getUserProfile(ndk, pubkey) {
     const user = ndk.getUser({
-      pubkey
+      pubkey,
     });
 
     return await user.fetchProfile();
@@ -158,7 +165,12 @@
   }
 
   async function loadOwnEvents() {
-    const fetchSelectedFilter = { kinds: [1], authors: [pubkey], since: getBODTimestamp(), until: getEODTimestamp() };
+    const fetchSelectedFilter = {
+      kinds: [1],
+      authors: [pubkey],
+      since: getBODTimestamp(),
+      until: getEODTimestamp(),
+    };
     const submittedEvents = await ndk.fetchEvents(fetchSelectedFilter);
     submittedEvents.forEach((e) => {
       if (isRootNote(e)) {
@@ -176,7 +188,7 @@
   //   setTimeout(() => showAlertOnPageReload = false, 4000);
   //   event.preventDefault();
   // }
-  
+
   function getBODTimestamp() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -257,14 +269,23 @@
       closeOnEose: false,
     });
     subscription.on("event", async (event) => {
-      const eventCity = JSON.parse(event.content).city;
+      const eventCity = {
+        cityName: event.tags.find((t) => t[0] === "city")?.[1] || "",
+        cityCountry: "", // Add country if needed
+      };
+
       if (isRootNote(event) && isTheSameCity(city, eventCity)) {
         addMessage(event).then(() => fetchUserProfile(event.pubkey));
       }
     });
+
     ndk.fetchEvents([KIND_1_FILTER]).then((events) => {
       for (const event of events) {
-        const eventCity = JSON.parse(event.content).city;
+        const eventCity = {
+          cityName: event.tags.find((t) => t[0] === "city")?.[1] || "",
+          cityCountry: "", // Add country if needed
+        };
+
         if (isRootNote(event) && isTheSameCity(city, eventCity)) {
           addMessage(event).then(() => fetchUserProfile(event.pubkey));
         }
@@ -273,16 +294,19 @@
   }
 
   function isTheSameCity(city1, city2) {
-    return (
-      city1.cityName === city2.cityName &&
-      city1.cityCountry === city2.cityCountry
-    );
+    if (!city1 || !city2) return false;
+    return city1.cityName === city2.cityName;
   }
 
   async function initConnectedMessages() {
     // 1. selected and its parent
     ndk
-      .fetchEvents({ kinds: [1], authors: [selectedAuthor], since: getBODTimestamp(), until: getEODTimestamp() })
+      .fetchEvents({
+        kinds: [1],
+        authors: [selectedAuthor],
+        since: getBODTimestamp(),
+        until: getEODTimestamp(),
+      })
       .then((notes) =>
         notes.forEach((e) => {
           // selected
@@ -298,10 +322,10 @@
                   if (isRootNote(note)) {
                     addMessage(note).then(() => fetchUserProfile(note.pubkey));
                   }
-                })
+                }),
               );
           }
-        })
+        }),
       );
 
     // 3. replies: to mine & to selected
@@ -329,15 +353,20 @@
             // and we have to add the parent's note:
             const selectedParentKey = event.tagValue("p");
             ndk
-              .fetchEvents({ kinds: [1], authors: [selectedParentKey], since: getBODTimestamp(), until: getEODTimestamp() })
+              .fetchEvents({
+                kinds: [1],
+                authors: [selectedParentKey],
+                since: getBODTimestamp(),
+                until: getEODTimestamp(),
+              })
               .then((p) =>
                 p.forEach((note) => {
                   if (isRootNote(note)) {
                     addMessage(note).then(() => fetchUserProfile(note.pubkey));
                   }
-                })
+                }),
               );
-          })
+          });
       }
 
       // todo: question if it is required to subscribe to a chat
@@ -349,10 +378,16 @@
 
     const idExists = messages.some((m) => m.id === event.id);
     const pubkeyExists = messages.some((m) => m.pubkey === eventPubkey);
-    const eventCity = JSON.parse(event.content).city;
+
+    // Get city from tags instead of parsing content
+    const eventCity = {
+      cityName: event.tags.find((t) => t[0] === "city")?.[1] || "",
+      cityCountry: "", // Add country if needed
+    };
+
     if (!idExists && !pubkeyExists && isTheSameCity(city, eventCity)) {
       messages = [{ ...event, author: null }, ...messages].sort(
-        (a, b) => b.created_at - a.created_at
+        (a, b) => b.created_at - a.created_at,
       );
     }
   }
@@ -362,21 +397,21 @@
     const user = ndk.getUser({ pubkey: eventPubkey });
     user.fetchProfile().then(() => {
       const profile = user.profile;
-      
+
       userProfiles.set(eventPubkey, profile);
       validateMessagesWithProfile(eventPubkey, profile);
       loadingComplete = isLoadingComplete();
-    })
+    });
   }
 
   function validateMessagesWithProfile(eventPubkey, profile) {
     messages = messages.map((msg) =>
-      msg.pubkey === eventPubkey ? { ...msg, author: profile } : msg
+      msg.pubkey === eventPubkey ? { ...msg, author: profile } : msg,
     );
   }
 
   function isLoadingComplete() {
-    return [...userProfiles].map(e => e[1]).length === messages.length;
+    return [...userProfiles].map((e) => e[1]).length === messages.length;
   }
 
   async function select(event) {
@@ -415,9 +450,26 @@
 
   // TODO why is it calling so many times??
   function parseEventContent(event) {
+    // Find tags by name
+    const getTag = (name) => {
+      const tag = event.tags.find((t) => t[0] === name);
+      return tag ? tag[1] : "";
+    };
+
     return {
       ...event,
-      parsedContent: JSON.parse(event.content),
+      parsedContent: {
+        word1: getTag("topic1"),
+        word2: getTag("topic2"),
+        word3: getTag("topic3"),
+        word4: getTag("topic4"),
+        timeFrom: getTag("timeFrom"),
+        timeTo: getTag("timeTo"),
+        location: getTag("location"),
+        city: getTag("city"),
+        minPrice: getTag("priceFrom"),
+        maxPrice: getTag("priceTo"),
+      },
     };
   }
 
@@ -428,22 +480,26 @@
   }
 
   function onChangeWord1() {
-    message.word1 = parseInputWord(inputWord1);
+    const word = parseInputWord(inputWord1);
+    message.topic1 = word;
     validateMessage();
   }
 
   function onChangeWord2() {
-    message.word2 = parseInputWord(inputWord2);
+    const word = parseInputWord(inputWord2);
+    message.topic2 = word;
     validateMessage();
   }
 
   function onChangeWord3() {
-    message.word3 = parseInputWord(inputWord3);
+    const word = parseInputWord(inputWord3);
+    message.topic3 = word;
     validateMessage();
   }
 
   function onChangeWord4() {
-    message.word4 = parseInputWord(inputWord4);
+    const word = parseInputWord(inputWord4);
+    message.topic4 = word;
     validateMessage();
   }
 
@@ -459,11 +515,11 @@
 
   function validateMessage() {
     isMessageValid =
-      inputWord1.trim().length > 0 &&
-      inputWord2.trim().length > 0 &&
-      inputWord3.trim().length > 0 &&
-      inputWord4.trim().length > 0 &&
-      inputLocation.trim().length > 0;
+      message.topic1?.trim().length > 0 &&
+      message.topic2?.trim().length > 0 &&
+      message.topic3?.trim().length > 0 &&
+      message.topic4?.trim().length > 0 &&
+      message.location?.trim().length > 0;
   }
 
   async function handleSubmit() {
@@ -474,11 +530,11 @@
     }
 
     let loading = true;
-    message.minPrice = minValue.toString();
-    message.maxPrice = maxValue.toString();
+    message.priceFrom = minValue.toString();
+    message.priceTo = maxValue.toString();
     message.timeFrom = timeFrom;
     message.timeTo = timeTo;
-    message.city = city;
+    message.city = city.cityName;
 
     if (!isMessageValid) {
       showAlertOnSubmittingInvalid = true;
@@ -500,8 +556,26 @@
   async function sendMessage(message) {
     const ndkEvent = new NDKEvent(ndk);
     ndkEvent.kind = 1;
-    ndkEvent.content = JSON.stringify(message);
-    ndkEvent.publish();
+
+    // Construct content string
+    const content = `${message.city} ${message.location} ${message.timeFrom} ${message.timeTo} ${message.topic1} ${message.topic2} ${message.topic3} ${message.topic4}`;
+    ndkEvent.content = content;
+
+    // Add tags
+    ndkEvent.tags = [
+      ["topic1", message.topic1],
+      ["topic2", message.topic2],
+      ["topic3", message.topic3],
+      ["topic4", message.topic4],
+      ["timeFrom", message.timeFrom],
+      ["timeTo", message.timeTo],
+      ["location", message.location],
+      ["city", message.city],
+      ["priceFrom", message.priceFrom],
+      ["priceTo", message.priceTo],
+    ];
+
+    await ndkEvent.publish();
     return ndkEvent;
   }
 
@@ -509,7 +583,7 @@
     if (!channelId) {
       const allChannels = await ndk.fetchEvents(KIND_40_FILTER);
       const channelEvent = [...allChannels].filter((event) =>
-        userProfiles.has(event.pubkey)
+        userProfiles.has(event.pubkey),
       )[0];
       if (channelEvent) {
         channelId = channelEvent.id;
@@ -531,7 +605,7 @@
         ndkEvent.publish().then((ok) => {
           ndk.fetchEvents(KIND_40_FILTER).then((allLatestChannels) => {
             const latestChannelEvent = [...allLatestChannels].filter((event) =>
-              userProfiles.has(event.pubkey)
+              userProfiles.has(event.pubkey),
             )[0];
             if (latestChannelEvent) {
               channelId = latestChannelEvent.id;
@@ -575,7 +649,7 @@
   {/if}
   {#if showInspirationModal}
     <InspirationModal bind:showInspirationModal>
-      <Inspiration onClose={closeModal}/>
+      <Inspiration onClose={closeModal} />
     </InspirationModal>
   {/if}
   <div
@@ -590,7 +664,7 @@
       <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
         <div class="flex justify-between">
           <!-- todo: decide if the below info is helping or confusing -->
-            <!-- {#if madeDecision()}
+          <!-- {#if madeDecision()}
               <div class="absolute top-25 left-10 items-center">
                 <p class="text-lg text-gray-300">
                   Building {city && city.cityName} group<span class="animate-ping"
@@ -610,11 +684,11 @@
           </div>
           <div>
             <!-- <button on:click={openInspirationModal}> -->
-            <img 
-              src="/logo_wtr.png" 
-              alt="logo" 
-              class="h-20 transition-transform duration-900 ease-in-out transform hover:scale-150" 
-              />
+            <img
+              src="/logo_wtr.png"
+              alt="logo"
+              class="h-20 transition-transform duration-900 ease-in-out transform hover:scale-150"
+            />
             <!-- </button> -->
           </div>
           {#if isAuthenticated}
@@ -656,7 +730,9 @@
               >
                 Quick meet with friendly people around?
               </h2>
-              <p class="mt-4 text-lg leading-8 text-gray-300">What do you want to talk about today? <br>(only 4 words)</p>
+              <p class="mt-4 text-lg leading-8 text-gray-300">
+                What do you want to talk about today? <br />(only 4 words)
+              </p>
               <div class="mt-6 flex max-w-md gap-x-4">
                 <label for="word-1" class="sr-only">Word 1</label>
                 <input
@@ -723,9 +799,7 @@
                   placeholder="Street or borough"
                 />
               </div>
-              <p class="mt-4 text-lg leading-8 text-gray-300">
-                When?
-              </p>
+              <p class="mt-4 text-lg leading-8 text-gray-300">When?</p>
               <!-- timepicker -->
               <div class="mt-6 flex max-w-md gap-x-4">
                 <span
@@ -793,15 +867,16 @@
             class="bg-gray-900 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"
           >
             <div class="max-w-4xl max-y-md py-16 sm:py-24 lg:py-32">
-              <Chat {ndk} username={name} {channelId} signerKey={pubkey}
-              ></Chat>
+              <Chat {ndk} username={name} {channelId} signerKey={pubkey}></Chat>
             </div>
           </div>
         {/if}
 
         <!-- alert -->
         {#if showAlertOnSubmittingSuccess}
-          <OnSubmittingSuccessAlert on:showAlert={() => showAlertOnSubmittingSuccess = false} />
+          <OnSubmittingSuccessAlert
+            on:showAlert={() => (showAlertOnSubmittingSuccess = false)}
+          />
         {/if}
 
         {#await initConnectedMessages}
@@ -824,54 +899,62 @@
                   on:click={(event) => select(message)}
                   class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
                 >
-                    <div class="flex min-w-0 gap-x-7">
-                      <div class="flex min-w-10 items-center">
-                        {#if !message.author || !message.author.avatar}
-                          <div class="avatarLoader">Loading...</div>
-                        {:else}
-                          <img
-                            class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                            src={message.author && message.author?.avatar}
-                            alt=""
-                          />
-                        {/if}
-                      </div>
-                      <div class="grid grid-cols-1 gap-0 content-center">
-                        <p class="text-sm truncate font-semibold text-white flex justify-start">
-                          {parseEventContent(message).parsedContent.word1}
-                          {parseEventContent(message).parsedContent.word2}
-                          {parseEventContent(message).parsedContent.word3}
-                          {parseEventContent(message).parsedContent.word4}
-                        </p>
-                        {#if !message.author || !message.author.name}
-                          <p class="mt-1 truncate text-xs flex justify-start text-gray-500">???</p>
-                        {:else}
-                          <p class="mt-1 truncate text-xs flex justify-start text-gray-500">
-                            {message.author && message.author.name}
-                          </p>
-                        {/if}
-                      </div>
+                  <div class="flex min-w-0 gap-x-7">
+                    <div class="flex min-w-10 items-center">
+                      {#if !message.author || !message.author.avatar}
+                        <div class="avatarLoader">Loading...</div>
+                      {:else}
+                        <img
+                          class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
+                          src={message.author && message.author?.avatar}
+                          alt=""
+                        />
+                      {/if}
                     </div>
+                    <div class="grid grid-cols-1 gap-0 content-center">
+                      <p
+                        class="text-sm truncate font-semibold text-white flex justify-start"
+                      >
+                        {parseEventContent(message).parsedContent.word1}
+                        {parseEventContent(message).parsedContent.word2}
+                        {parseEventContent(message).parsedContent.word3}
+                        {parseEventContent(message).parsedContent.word4}
+                      </p>
+                      {#if !message.author || !message.author.name}
+                        <p
+                          class="mt-1 truncate text-xs flex justify-start text-gray-500"
+                        >
+                          ???
+                        </p>
+                      {:else}
+                        <p
+                          class="mt-1 truncate text-xs flex justify-start text-gray-500"
+                        >
+                          {message.author && message.author.name}
+                        </p>
+                      {/if}
+                    </div>
+                  </div>
                   <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
                     <div class="text-sm leading-6 text-gray-200 truncate">
                       {parseEventContent(message).parsedContent.location}
                     </div>
                     <div class="text-sm leading-6 text-gray-200 truncate">
                       @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(
-                        message
-                        ).parsedContent.timeTo}
+                        message,
+                      ).parsedContent.timeTo}
                     </div>
                     <!-- <small class="text-xs leading-6 text-gray-400">
                       added {new Date(message.created_at * 1000).toLocaleTimeString([], {timeStyle: 'short'}) }
                     </small> -->
-                    
+
                     <small class="text-xs leading-6 text-gray-400 truncate">
                       💵 {parseEventContent(message).parsedContent.minPrice} - {parseEventContent(
-                        message
-                        ).parsedContent.maxPrice}
-                      </small>
-                      <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
-                    </div>
+                        message,
+                      ).parsedContent.maxPrice}
+                    </small>
+                    <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
+                  </div>
                 </li>
               {/each}
               {#if madeDecision() && messages.length < 4}
@@ -888,12 +971,28 @@
                 <div class="divide-y divide-gray-100 mt-5">
                   <Tooltip text="Get inspired!" position="center">
                     <button on:click={openInspirationModal}>
-                      <div class="inspire-img" on:mouseenter={toggleMainImage} on:mouseleave={toggleMainImage}>
-                        <div class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? 'opacity-0' : 'opacity-100'}`}>
-                          <img alt="front-img" src="/images/photos/hook_front.jpg" class="w-full h-full object-cover" />
+                      <div
+                        class="inspire-img"
+                        on:mouseenter={toggleMainImage}
+                        on:mouseleave={toggleMainImage}
+                      >
+                        <div
+                          class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? "opacity-0" : "opacity-100"}`}
+                        >
+                          <img
+                            alt="front-img"
+                            src="/images/photos/hook_front.jpg"
+                            class="w-full h-full object-cover"
+                          />
                         </div>
-                        <div class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? 'opacity-100' : 'opacity-0'}`}>
-                          <img alt="cartoon-img" src="/images/photos/hook_front_cartoon.png" class="w-full h-full object-cover" />
+                        <div
+                          class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? "opacity-100" : "opacity-0"}`}
+                        >
+                          <img
+                            alt="cartoon-img"
+                            src="/images/photos/hook_front_cartoon.png"
+                            class="w-full h-full object-cover"
+                          />
                         </div>
                       </div>
                     </button>
@@ -932,7 +1031,7 @@
     border-radius: 50%;
     border-top-color: #3498db;
     animation: spin 1s linear infinite;
-    margin: auto; 
+    margin: auto;
   }
 
   @keyframes spin {
@@ -941,7 +1040,6 @@
     }
   }
   /* avatar loader end */
-
 
   .inspire-img {
     display: grid;
