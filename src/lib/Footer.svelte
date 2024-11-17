@@ -1,6 +1,12 @@
 <script>
   // You can import social media icons from a library or use SVGs
-  const socialLinks = [{ name: "Github", href: "#", icon: "" }];
+  const socialLinks = [
+    {
+      name: "Humbly open source",
+      href: "https://github.com/kuba-04/hook.cafe",
+      icon: "/github-mark-white.png",
+    },
+  ];
 </script>
 
 <footer class="bg-black text-amber-50 py-6">
@@ -33,10 +39,10 @@
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              class="hover:text-gray-400"
+              class="hover:text-gray-400 flex space-x-2"
             >
-              {link.icon}
-              {link.name}
+              <span class="hidden sm:block">{link.name}</span>
+              <img src={link.icon} alt="oops!" class="w-7 h-7" />
             </a>
           </li>
         {/each}
