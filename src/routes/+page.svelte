@@ -7,7 +7,11 @@
   import Slider from "../lib/Slider.svelte";
   import { goto } from "$app/navigation";
   import { env } from "$env/dynamic/public";
-  import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+  import NDK, {
+    NDKEvent,
+    NDKPrivateKeySigner,
+    NDKSubscription,
+  } from "@nostr-dev-kit/ndk";
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
   import Chat from "$lib/Chat/Chat.svelte";
@@ -21,8 +25,9 @@
   import Inspiration from "$lib/Inspiration.svelte";
   import InspirationModal from "$lib/InspirationModal.svelte";
   import Tooltip from "$lib/Tooltip.svelte";
+  import SomeoneSelectedMeAlert from "$lib/alerts/SomeoneSelectedMeAlert.svelte";
 
-  const PROFILE_FILTER = { kinds: [0] };
+  const KIND_0_FILTER = { kinds: [0] };
   const KIND_1_FILTER = {
     kinds: [1],
     since: getBODTimestamp(),
@@ -74,6 +79,9 @@
   let showAlertOnSubmittingSuccess = false;
   let showAlertOnSelectingSelf = false;
   let showAlertOnPageReload = false;
+
+  let showYouGotSelected = false;
+  let myFollowEvent;
 
   let isImageCartoon = true;
 
@@ -135,8 +143,10 @@
       avatar: avatar,
     });
     metadataEvent.content = content;
-    await metadataEvent.sign();
-    await metadataEvent.publish();
+    await metadataEvent.sign().then((signature) => metadataEvent.publish());
+    // setTimeout(async () => {
+    //   await metadataEvent.publish();
+    // }, 1000);
   }
 
   async function handleLogin(event) {
@@ -256,38 +266,66 @@
   }
 
   function isRootNote(event) {
-    return event.kind === 1 && !event.tags.some((tag) => tag[0] === "e");
+    return event.kind === 1 && !event.tagValue("alt") && !event.tagValue("p");
   }
 
-  // TODO: replace with eventIsReply
   function isReplyNote(event) {
-    return event.kind === 1 && event.tags.some((tag) => tag[0] === "e");
+    return event instanceof NDKEvent && event.tagValue("alt") === "reply";
   }
 
   async function initMessages() {
-    subscription = ndk.subscribe([KIND_1_FILTER, PROFILE_FILTER], {
+    subscription = ndk.subscribe([KIND_1_FILTER, KIND_0_FILTER], {
       closeOnEose: false,
     });
     subscription.on("event", async (event) => {
       const eventCity = {
-        cityName: event.tags.find((t) => t[0] === "city")?.[1] || "",
-        cityCountry: "", // Add country if needed
+        cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
+        cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
       };
 
       if (isRootNote(event) && isTheSameCity(city, eventCity)) {
-        addMessage(event).then(() => fetchUserProfile(event.pubkey));
+        addMessage(event);
+      }
+      if (
+        isReplyNote(event) &&
+        event.tags.find((t) => t[0] === "p")?.[1] === pubkey
+      ) {
+        await ndk
+          .fetchEvents({
+            kinds: [1],
+            authors: [event.pubkey],
+            since: getBODTimestamp(),
+            until: getEODTimestamp(),
+          })
+          .then((events) => {
+            events.forEach((e) => {
+              if (isRootNote(e)) {
+                getUserProfile(ndk, e.pubkey).then((profile) => {
+                  myFollowEvent = {
+                    ...e,
+                    author: {
+                      name: profile?.name || "",
+                      avatar: profile?.avatar || "",
+                    },
+                  };
+                  showYouGotSelected = true;
+                });
+                return;
+              }
+            });
+          });
       }
     });
 
     ndk.fetchEvents([KIND_1_FILTER]).then((events) => {
       for (const event of events) {
         const eventCity = {
-          cityName: event.tags.find((t) => t[0] === "city")?.[1] || "",
-          cityCountry: "", // Add country if needed
+          cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
+          cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
         };
 
         if (isRootNote(event) && isTheSameCity(city, eventCity)) {
-          addMessage(event).then(() => fetchUserProfile(event.pubkey));
+          addMessage(event);
         }
       }
     });
@@ -295,100 +333,94 @@
 
   function isTheSameCity(city1, city2) {
     if (!city1 || !city2) return false;
-    return city1.cityName === city2.cityName;
+    return (
+      city1.cityName === city2.cityName &&
+      city1.cityCountry === city2.cityCountry
+    );
   }
 
   async function initConnectedMessages() {
-    // 1. selected and its parent
     ndk
       .fetchEvents({
         kinds: [1],
-        authors: [selectedAuthor],
+        authors: [pubkey, selectedAuthor], // todo: here fetch also child
         since: getBODTimestamp(),
         until: getEODTimestamp(),
       })
-      .then((notes) =>
-        notes.forEach((e) => {
-          // selected
-          if (isRootNote(e)) {
-            addMessage(e).then(() => fetchUserProfile(e.pubkey));
-          } else {
-            // and his parent:
-            const selectedParentKey = e.tagValue("p");
-            ndk
-              .fetchEvents({ kinds: [1], authors: [selectedParentKey] })
-              .then((p) =>
-                p.forEach((note) => {
-                  if (isRootNote(note)) {
-                    addMessage(note).then(() => fetchUserProfile(note.pubkey));
-                  }
-                }),
-              );
-          }
-        }),
-      );
+      .then((notes) => notes.forEach((e) => addMessage(e)));
 
-    // 3. replies: to mine & to selected
-    ndk.fetchEvents(KIND_1_FILTER).then((notes) => {
-      notes.forEach((note) => {
-        if (
-          isReplyNote(note) &&
-          (note.getMatchingTags("e", pubkey) !== null ||
-            note.getMatchingTags("e", selectedAuthor) !== null)
-        ) {
-          addMessage(note).then(() => fetchUserProfile(note.pubkey));
-        }
-      });
-    });
-
-    subscription = ndk.subscribe([KIND_1_FILTER, PROFILE_FILTER], {
+    subscription = ndk.subscribe([KIND_1_FILTER, KIND_0_FILTER], {
       closeOnEose: false,
     });
-    subscription.on("event", async (event) => {
-      if (isReplyNote(event)) {
-        // selected author has to sub my note:
-        addMessage(event)
-          .then(() => fetchUserProfile(event.pubkey))
-          .then(() => {
-            // and we have to add the parent's note:
-            const selectedParentKey = event.tagValue("p");
-            ndk
-              .fetchEvents({
-                kinds: [1],
-                authors: [selectedParentKey],
-                since: getBODTimestamp(),
-                until: getEODTimestamp(),
-              })
-              .then((p) =>
-                p.forEach((note) => {
-                  if (isRootNote(note)) {
-                    addMessage(note).then(() => fetchUserProfile(note.pubkey));
-                  }
-                }),
-              );
-          });
-      }
 
-      // todo: question if it is required to subscribe to a chat
+    subscription.on("event", async (event) => {
+      const eventCity = {
+        cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
+        cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
+      };
+
+      if (selectedAuthor.length === 0 && isTheSameCity(city, eventCity)) {
+        console.log("SUB all from same city: ", event);
+        await addMessage(event);
+      } else {
+        await fetchNestedSelect(selectedAuthor);
+      }
     });
   }
 
+  async function fetchNestedSelect(key) {
+    const nested = await ndk.fetchEvents({
+      kinds: [1],
+      authors: [key],
+      since: getBODTimestamp(),
+      until: getEODTimestamp(),
+    });
+    const childEvent = [...nested].filter((event) => isReplyNote(event))[0];
+    if (childEvent) {
+      const childEventKey = childEvent.tagValue("p");
+      console.log("child found: ", childEventKey);
+      ndk
+        .fetchEvents({
+          kinds: [1],
+          authors: [childEventKey],
+          since: getBODTimestamp(),
+          until: getEODTimestamp(),
+        })
+        .then((e) => {
+          console.log("FETCHED NESTED found: ", e);
+          const rootEvent = Array.from(e).filter((m) => isRootNote(m))[0];
+          if (rootEvent) {
+            console.log("rootEvent found: ", rootEvent);
+            addMessage(rootEvent);
+          }
+          const replyEvent = Array.from(e).filter((m) => isReplyNote(m))[0];
+          if (replyEvent) {
+            console.log("replyEvent found: ", replyEvent);
+            fetchNestedSelect(replyEvent);
+          }
+        });
+    }
+  }
+
   async function addMessage(event) {
+    if (!event) return;
     const eventPubkey = event.pubkey;
 
     const idExists = messages.some((m) => m.id === event.id);
     const pubkeyExists = messages.some((m) => m.pubkey === eventPubkey);
 
-    // Get city from tags instead of parsing content
     const eventCity = {
       cityName: event.tags.find((t) => t[0] === "city")?.[1] || "",
-      cityCountry: "", // Add country if needed
+      cityCountry: event.tags.find((t) => t[0] === "city")?.[2] || "",
     };
 
-    if (!idExists && !pubkeyExists && isTheSameCity(city, eventCity)) {
+    if (!idExists && !pubkeyExists) {
       messages = [{ ...event, author: null }, ...messages].sort(
         (a, b) => b.created_at - a.created_at,
       );
+      messages.forEach((m) => {
+        fetchUserProfile(m.pubkey);
+      });
     }
   }
 
@@ -397,7 +429,6 @@
     const user = ndk.getUser({ pubkey: eventPubkey });
     user.fetchProfile().then(() => {
       const profile = user.profile;
-
       userProfiles.set(eventPubkey, profile);
       validateMessagesWithProfile(eventPubkey, profile);
       loadingComplete = isLoadingComplete();
@@ -423,26 +454,27 @@
       setTimeout(() => (showAlertOnSelectUnsubmitted = false), 2000);
       return;
     }
-    const eventAuthorKey = event.pubkey;
-    const currentUserKey = (await signer.user()).pubkey;
-    if (eventAuthorKey === currentUserKey) {
+    selectedAuthor = event.pubkey;
+    if (selectedAuthor === pubkey) {
       showAlertOnSelectingSelf = true;
       setTimeout(() => (showAlertOnSelectingSelf = false), 2000);
       return;
     }
-    selectedAuthor = eventAuthorKey;
-    localStorage.setItem("selected", eventAuthorKey);
-    const ownNoteFilter = { kinds: [1], authors: [currentUserKey] };
-    const ownEvent = await ndk.fetchEvent(ownNoteFilter);
+    localStorage.setItem("selected", selectedAuthor);
+    console.log("selecting: ", selectedAuthor);
+    const ownNoteFilter = { kinds: [1], authors: [pubkey] };
+    const ownEvent = messages.filter((m) => m.pubkey === pubkey)[0];
     const replyEvent = new NDKEvent(ndk);
     replyEvent.kind = 1;
     replyEvent.tags = [
       ["e", event.id],
-      ["p", event.pubkey],
+      ["alt", "reply"],
+      ["p", selectedAuthor],
     ];
     replyEvent.content = (ownEvent && ownEvent.content) || "";
     messages = [];
     replyEvent.publish().then(() => {
+      subscription.stop();
       userProfiles.clear();
       initConnectedMessages();
     });
@@ -534,7 +566,8 @@
     message.priceTo = maxValue.toString();
     message.timeFrom = timeFrom;
     message.timeTo = timeTo;
-    message.city = city.cityName;
+    message.cityName = city.cityName;
+    message.cityCountry = city.cityCountry;
 
     if (!isMessageValid) {
       showAlertOnSubmittingInvalid = true;
@@ -557,8 +590,7 @@
     const ndkEvent = new NDKEvent(ndk);
     ndkEvent.kind = 1;
 
-    // Construct content string
-    const content = `${message.city} ${message.location} ${message.timeFrom} ${message.timeTo} ${message.topic1} ${message.topic2} ${message.topic3} ${message.topic4}`;
+    const content = `${message.cityName},${message.cityCountry},${message.location},${message.timeFrom},${message.timeTo},${message.topic1},${message.topic2},${message.topic3},${message.topic4}`;
     ndkEvent.content = content;
 
     // Add tags
@@ -570,7 +602,7 @@
       ["timeFrom", message.timeFrom],
       ["timeTo", message.timeTo],
       ["location", message.location],
-      ["city", message.city],
+      ["city", message.cityName, message.cityCountry],
       ["priceFrom", message.priceFrom],
       ["priceTo", message.priceTo],
     ];
@@ -892,6 +924,15 @@
             <!-- alert -->
             {#if showAlertOnSelectingSelf}
               <OnSelectingSelfAlert />
+            {/if}
+            {#if showYouGotSelected}
+              <div class="text-lg font-semibold leading-6 text-white">
+                Someone selected you!
+              </div>
+              <SomeoneSelectedMeAlert
+                eventData={myFollowEvent}
+                on:showAlert={() => (showYouGotSelected = false)}
+              />
             {/if}
             <ul role="list" class="divide-y divide-gray-100 mt-5">
               {#each messages as message (message.id)}
