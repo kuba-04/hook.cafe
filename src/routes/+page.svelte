@@ -286,35 +286,8 @@
       if (isRootNote(event) && isTheSameCity(city, eventCity)) {
         addMessage(event);
       }
-      if (
-        isReplyNote(event) &&
-        event.tags.find((t) => t[0] === "p")?.[1] === pubkey
-      ) {
-        await ndk
-          .fetchEvents({
-            kinds: [1],
-            authors: [event.pubkey],
-            since: getBODTimestamp(),
-            until: getEODTimestamp(),
-          })
-          .then((events) => {
-            events.forEach((e) => {
-              if (isRootNote(e)) {
-                getUserProfile(ndk, e.pubkey).then((profile) => {
-                  myFollowEvent = {
-                    ...e,
-                    author: {
-                      name: profile?.name || "",
-                      avatar: profile?.avatar || "",
-                    },
-                  };
-                  showYouGotSelected = true;
-                });
-                return;
-              }
-            });
-          });
-      }
+
+      await fetchMyFollower(event);
     });
 
     ndk.fetchEvents([KIND_1_FILTER]).then((events) => {
@@ -329,6 +302,38 @@
         }
       }
     });
+  }
+
+  async function fetchMyFollower(event) {
+    if (
+      isReplyNote(event) &&
+      event.tags.find((t) => t[0] === "p")?.[1] === pubkey
+    ) {
+      await ndk
+        .fetchEvents({
+          kinds: [1],
+          authors: [event.pubkey],
+          since: getBODTimestamp(),
+          until: getEODTimestamp(),
+        })
+        .then((events) => {
+          events.forEach((e) => {
+            if (isRootNote(e)) {
+              getUserProfile(ndk, e.pubkey).then((profile) => {
+                myFollowEvent = {
+                  ...e,
+                  author: {
+                    name: profile?.name || "",
+                    avatar: profile?.avatar || "",
+                  },
+                };
+                showYouGotSelected = true;
+              });
+              return;
+            }
+          });
+        });
+    }
   }
 
   function isTheSameCity(city1, city2) {
@@ -358,6 +363,8 @@
         cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
         cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
       };
+
+      await fetchMyFollower(event);
 
       if (selectedAuthor.length === 0 && isTheSameCity(city, eventCity)) {
         console.log("SUB all from same city: ", event);
