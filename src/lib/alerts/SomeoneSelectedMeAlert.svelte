@@ -1,12 +1,40 @@
 <script>
   import { createEventDispatcher } from "svelte";
 
-  export let eventData = null;
+  export let eventData;
 
   const dispatch = createEventDispatcher();
 
-  function dispatchChangeEvent() {
-    dispatch("showAlert", false);
+  function handleAccept() {
+    const reactionData = {
+      kind: 7,
+      content: "+",
+      tags: [
+        ...eventData.tags.filter((tag) => tag[0] === "e" || tag[0] === "p"),
+        ["e", eventData.id],
+        ["p", eventData.pubkey],
+        ["k", eventData.kind.toString()],
+      ],
+    };
+
+    console.log("Dispatching reaction:", reactionData);
+    dispatch("reaction", { reactionData });
+  }
+
+  function handleReject() {
+    const reactionData = {
+      kind: 7,
+      content: "-",
+      tags: [
+        ...eventData.tags.filter((tag) => tag[0] === "e" || tag[0] === "p"),
+        ["e", eventData.id],
+        ["p", eventData.pubkey],
+        ["k", eventData.kind.toString()],
+      ],
+    };
+
+    console.log("Dispatching reaction:", reactionData);
+    dispatch("reaction", { reactionData });
   }
 
   function parseEventContent(event) {
@@ -37,7 +65,6 @@
   class="flex items-center p-4 mb-4 text-sm rounded-lg bg-gray-800"
   role="alert"
 >
-  <div class="text-xl w-12">👍</div>
   <div class="flex min-w-0 gap-x-7">
     <div class="flex min-w-10 items-center">
       {#if !eventData.author?.avatar}
@@ -62,32 +89,23 @@
       </p>
     </div>
   </div>
-  <div class="shrink-0 sm:flex sm:flex-col sm:items-end ml-auto">
-    <div class="text-sm leading-6 text-gray-200 truncate"></div>
-  </div>
-  <button
-    on:click={dispatchChangeEvent}
-    type="button"
-    class="ms-3 -mx-1.5 -my-1.5 bg-blue-50 text-blue-500 rounded-lg focus:ring-2 focus:ring-blue-400 p-1.5 hover:bg-blue-200 inline-flex items-center justify-center h-8 w-8 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700"
-    aria-label="Close"
-  >
-    <span class="sr-only">Close</span>
-    <svg
-      class="w-3 h-3"
-      aria-hidden="true"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 14 14"
+
+  <div class="flex ml-auto gap-2">
+    <button
+      on:click={handleAccept}
+      class="text-xl p-2 hover:bg-gray-700 rounded-full transition-colors duration-200"
+      aria-label="Accept"
     >
-      <path
-        stroke="currentColor"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"
-      />
-    </svg>
-  </button>
+      👍
+    </button>
+    <button
+      on:click={handleReject}
+      class="text-xl p-2 hover:bg-gray-700 rounded-full transition-colors duration-200"
+      aria-label="Reject"
+    >
+      👎
+    </button>
+  </div>
 </div>
 
 <style>

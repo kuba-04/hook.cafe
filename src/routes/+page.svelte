@@ -938,7 +938,23 @@
               </div>
               <SomeoneSelectedMeAlert
                 eventData={myFollowEvent}
-                on:showAlert={() => (showYouGotSelected = false)}
+                on:reaction={async (event) => {
+                  const { reactionData } = event.detail;
+                  console.log("Received reaction event:", reactionData);
+                  try {
+                    const reactionEvent = new NDKEvent(ndk);
+                    reactionEvent.kind = reactionData.kind;
+                    reactionEvent.content = reactionData.content;
+                    reactionEvent.tags = reactionData.tags;
+                    await reactionEvent.sign();
+                    await reactionEvent.publish();
+                    console.log("Reaction published successfully");
+                  } catch (error) {
+                    console.error("Error publishing reaction:", error);
+                  } finally {
+                    showYouGotSelected = false;
+                  }
+                }}
               />
             {/if}
             <ul role="list" class="divide-y divide-gray-100 mt-5">
