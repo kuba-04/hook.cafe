@@ -28,8 +28,8 @@
   import SomeoneSelectedMeAlert from "$lib/alerts/SomeoneSelectedMeAlert.svelte";
 
   const KIND_0_FILTER = { kinds: [0] };
-  const KIND_1_FILTER = {
-    kinds: [1],
+  const SUBSCRIPTION_FILTER = {
+    kinds: [1, 7],
     since: getBODTimestamp(),
     until: getEODTimestamp(),
   };
@@ -84,6 +84,8 @@
   let myFollowEvent;
 
   let isImageCartoon = true;
+
+  let eventsInGroup = new Set(); // Store IDs of messages with positive reactions
 
   const toggleMainImage = () => {
     isImageCartoon = !isImageCartoon;
@@ -274,7 +276,7 @@
   }
 
   async function initMessages() {
-    subscription = ndk.subscribe([KIND_1_FILTER, KIND_0_FILTER], {
+    subscription = ndk.subscribe([SUBSCRIPTION_FILTER, KIND_0_FILTER], {
       closeOnEose: false,
     });
     subscription.on("event", async (event) => {
@@ -290,7 +292,7 @@
       await fetchMyFollower(event);
     });
 
-    ndk.fetchEvents([KIND_1_FILTER]).then((events) => {
+    ndk.fetchEvents([SUBSCRIPTION_FILTER]).then((events) => {
       for (const event of events) {
         const eventCity = {
           cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
@@ -299,6 +301,23 @@
 
         if (isRootNote(event) && isTheSameCity(city, eventCity)) {
           addMessage(event);
+        }
+        // TODO: handle reactions
+        if (event.kind === 7) {
+          console.log("reaction: ", event);
+          if (event.tags.find((t) => t[1] === pubkey)) {
+            console.log("reaction to my note: ", event);
+            const targetEventPubkey = event.pubkey;
+
+            if (event.content === "+") {
+              console.log("liked my note: ", event);
+              eventsInGroup.add(pubkey);
+              eventsInGroup.add(targetEventPubkey);
+              eventsInGroup = eventsInGroup;
+            } else if (event.content === "-") {
+              console.log("disliked my note: ", event);
+            }
+          }
         }
       }
     });
@@ -354,7 +373,7 @@
       })
       .then((notes) => notes.forEach((e) => addMessage(e)));
 
-    subscription = ndk.subscribe([KIND_1_FILTER, KIND_0_FILTER], {
+    subscription = ndk.subscribe([SUBSCRIPTION_FILTER, KIND_0_FILTER], {
       closeOnEose: false,
     });
 
@@ -371,6 +390,25 @@
         await addMessage(event);
       } else {
         await fetchNestedSelect(selectedAuthor);
+      }
+
+      // TODO: handle reactions
+      if (event.kind === 7) {
+        console.log("reaction: ", event);
+        if (event.tags.find((t) => t[1] === pubkey)) {
+          console.log("reaction to my note: ", event);
+          const targetEventPubkey = event.pubkey;
+          if (event.content === "+") {
+            console.log("liked my note: ", event);
+            eventsInGroup.add(pubkey);
+            eventsInGroup.add(targetEventPubkey);
+            eventsInGroup = eventsInGroup;
+
+            console.log("eventsInGroup: ", eventsInGroup);
+          } else if (event.content === "-") {
+            console.log("disliked my note: ", event);
+          }
+        }
       }
     });
   }
@@ -964,15 +1002,22 @@
                   class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
                 >
                   <div class="flex min-w-0 gap-x-7">
-                    <div class="flex min-w-10 items-center">
+                    <div class="flex min-w-10 items-center relative">
                       {#if !message.author || !message.author.avatar}
                         <div class="avatarLoader">Loading...</div>
                       {:else}
-                        <img
-                          class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                          src={message.author && message.author?.avatar}
-                          alt=""
-                        />
+                        <div class="relative">
+                          <img
+                            class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
+                            src={message.author && message.author?.avatar}
+                            alt=""
+                          />
+                          {#if eventsInGroup.has(message.pubkey)}
+                            <div class="absolute -bottom-1 -right-1">
+                              <span class="text-xs">✅</span>
+                            </div>
+                          {/if}
+                        </div>
                       {/if}
                     </div>
                     <div class="grid grid-cols-1 gap-0 content-center">
