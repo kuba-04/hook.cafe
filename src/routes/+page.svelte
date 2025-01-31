@@ -328,6 +328,13 @@
       isReplyNote(event) &&
       event.tags.find((t) => t[0] === "p")?.[1] === pubkey
     ) {
+      // Check if we're already in a group with this person
+      const senderPubkey = event.pubkey;
+      if (eventsInGroup.has(senderPubkey)) {
+        console.log("Already in group with:", senderPubkey);
+        return; // Skip showing the alert
+      }
+
       await ndk
         .fetchEvents({
           kinds: [1],
@@ -986,6 +993,16 @@
                     reactionEvent.tags = reactionData.tags;
                     await reactionEvent.sign();
                     await reactionEvent.publish();
+
+                    // Add both users to the group if it's a positive reaction
+                    if (reactionData.content === "+") {
+                      const followerPubkey = myFollowEvent.pubkey;
+                      eventsInGroup.add(pubkey); // Add myself
+                      eventsInGroup.add(followerPubkey); // Add the follower
+                      eventsInGroup = eventsInGroup; // Trigger Svelte reactivity
+                      console.log("Added to group:", pubkey, followerPubkey);
+                    }
+
                     console.log("Reaction published successfully");
                   } catch (error) {
                     console.error("Error publishing reaction:", error);
