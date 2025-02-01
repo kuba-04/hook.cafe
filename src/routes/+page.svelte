@@ -33,6 +33,7 @@
     since: getBODTimestamp(),
     until: getEODTimestamp(),
   };
+  new NDKEvent().filter;
   const KIND_40_FILTER = { kinds: [40] };
 
   let ndk;
@@ -289,7 +290,19 @@
         addMessage(event);
       }
 
+      if (selectedAuthor.length === 0 && isTheSameCity(city, eventCity)) {
+        // console.log("SUB all from same city: ", event);
+        await addMessage(event);
+      } else {
+        await fetchNestedSelect(selectedAuthor);
+      }
+
       await fetchMyFollower(event);
+
+      console.log(
+        "MESSAGES: ",
+        messages.map((m) => m.pubkey),
+      );
     });
 
     ndk.fetchEvents([SUBSCRIPTION_FILTER]).then((events) => {
@@ -302,6 +315,8 @@
         if (isRootNote(event) && isTheSameCity(city, eventCity)) {
           addMessage(event);
         }
+
+        console.log("KIND 7 in init fetch: ", event.kind === 7);
 
         handleReactions(event);
       }
@@ -338,7 +353,9 @@
                     avatar: profile?.avatar || "",
                   },
                 };
-                showYouGotSelected = true;
+                if (!eventsInGroup.has(event.pubkey)) {
+                  showYouGotSelected = true;
+                }
               });
               return;
             }
@@ -375,8 +392,6 @@
         cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
       };
 
-      await fetchMyFollower(event);
-
       if (selectedAuthor.length === 0 && isTheSameCity(city, eventCity)) {
         console.log("SUB all from same city: ", event);
         await addMessage(event);
@@ -384,9 +399,15 @@
         await fetchNestedSelect(selectedAuthor);
       }
 
-      // TODO: handle reactions
       handleReactions(event);
+
+      await fetchMyFollower(event);
     });
+
+    console.log(
+      "MESSAGES: ",
+      messages.map((m) => m.pubkey),
+    );
   }
   // todo: loop over all messages and take their pubkey and check
   // if event which is coming from the subscription here, has + content
@@ -731,10 +752,16 @@
               reactorPubkey,
               targetPubkey,
             );
-          } else if (isInMessages && !madeDecision()) {
+          } else if (
+            isInMessages &&
+            !madeDecision() &&
+            (targetPubkey === pubkey || reactorPubkey === pubkey)
+          ) {
             console.log("check only one I accepted");
-            eventsInGroup.add(selectedAuthor);
+            eventsInGroup.add(reactorPubkey);
+            eventsInGroup.add(targetPubkey);
             eventsInGroup = eventsInGroup;
+            console.log("EVENTS IN GROUP: ", eventsInGroup);
           }
         }
       }
