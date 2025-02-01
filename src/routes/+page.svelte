@@ -302,23 +302,8 @@
         if (isRootNote(event) && isTheSameCity(city, eventCity)) {
           addMessage(event);
         }
-        // TODO: handle reactions
-        if (event.kind === 7) {
-          console.log("reaction: ", event);
-          if (event.tags.find((t) => t[1] === pubkey)) {
-            console.log("reaction to my note: ", event);
-            const targetEventPubkey = event.pubkey;
 
-            if (event.content === "+") {
-              console.log("liked my note: ", event);
-              eventsInGroup.add(pubkey);
-              eventsInGroup.add(targetEventPubkey);
-              eventsInGroup = eventsInGroup;
-            } else if (event.content === "-") {
-              console.log("disliked my note: ", event);
-            }
-          }
-        }
+        handleReactions(event);
       }
     });
   }
@@ -400,25 +385,12 @@
       }
 
       // TODO: handle reactions
-      if (event.kind === 7) {
-        console.log("reaction: ", event);
-        if (event.tags.find((t) => t[1] === pubkey)) {
-          console.log("reaction to my note: ", event);
-          const targetEventPubkey = event.pubkey;
-          if (event.content === "+") {
-            console.log("liked my note: ", event);
-            eventsInGroup.add(pubkey);
-            eventsInGroup.add(targetEventPubkey);
-            eventsInGroup = eventsInGroup;
-
-            console.log("eventsInGroup: ", eventsInGroup);
-          } else if (event.content === "-") {
-            console.log("disliked my note: ", event);
-          }
-        }
-      }
+      handleReactions(event);
     });
   }
+  // todo: loop over all messages and take their pubkey and check
+  // if event which is coming from the subscription here, has + content
+  // if so, add it to eventsInGroup
 
   async function fetchNestedSelect(key) {
     const nested = await ndk.fetchEvents({
@@ -723,6 +695,50 @@
 
   function closeModal() {
     showInspirationModal = false;
+  }
+
+  function handleReactions(event) {
+    if (event.kind === 7) {
+      console.log("reaction: ", event);
+      if (event.tags.find((t) => t[1] === pubkey)) {
+        console.log("reaction to my note: ", event);
+        const targetEventPubkey = event.pubkey;
+        if (event.content === "+") {
+          console.log("liked my note: ", event);
+          eventsInGroup.add(targetEventPubkey);
+          eventsInGroup.add(pubkey); // I am also in the group
+          eventsInGroup = eventsInGroup;
+        } else if (event.content === "-") {
+          console.log("disliked my note: ", event);
+        }
+      } else {
+        // Handle reactions between other users
+        const reactorPubkey = event.pubkey;
+        const targetPubkey = event.tags.find((t) => t[0] === "p")?.[1];
+
+        if (event.content === "+" && targetPubkey) {
+          // Check if either user is in our messages list
+          const isInMessages = messages.some(
+            (m) => m.pubkey === reactorPubkey || m.pubkey === targetPubkey,
+          );
+
+          if (isInMessages && madeDecision()) {
+            eventsInGroup.add(reactorPubkey);
+            eventsInGroup.add(targetPubkey);
+            eventsInGroup = eventsInGroup;
+            console.log(
+              "Added to group from external reaction:",
+              reactorPubkey,
+              targetPubkey,
+            );
+          } else if (isInMessages && !madeDecision()) {
+            console.log("check only one I accepted");
+            eventsInGroup.add(selectedAuthor);
+            eventsInGroup = eventsInGroup;
+          }
+        }
+      }
+    }
   }
 </script>
 
@@ -1030,7 +1046,7 @@
                             src={message.author && message.author?.avatar}
                             alt=""
                           />
-                          {#if eventsInGroup.has(message.pubkey)}
+                          {#if (madeDecision() || eventsInGroup.size > 0) && eventsInGroup.has(message.pubkey)}
                             <div class="absolute -bottom-1 -right-1">
                               <span class="text-xs">✅</span>
                             </div>
