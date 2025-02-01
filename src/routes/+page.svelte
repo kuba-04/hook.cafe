@@ -510,6 +510,7 @@
     if (selectedAuthor === pubkey) {
       showAlertOnSelectingSelf = true;
       setTimeout(() => (showAlertOnSelectingSelf = false), 2000);
+      selectedAuthor = ""; // Reset selection if trying to select self
       return;
     }
     localStorage.setItem("selected", selectedAuthor);
