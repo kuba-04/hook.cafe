@@ -2,12 +2,12 @@
   import Modal from "../../../lib/Modal.svelte";
   import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
-  import { env } from '$env/dynamic/public';
+  import { env } from "$env/dynamic/public";
   import { goto } from "$app/navigation";
   import { getAllAvatars } from "$lib/avatars";
   import PasswordDisplay from "$lib/PasswordDisplay.svelte";
   import citiesData from "../../../lib/cities.json";
-  import { page } from '$app/stores';
+  import { page } from "$app/stores";
   import { nip19 } from "nostr-tools";
 
   let selectedAvatar = "";
@@ -31,15 +31,16 @@
     avatars = getAllAvatars();
     npub = $page.params.id;
     if (!npub) {
-      console.log("not found")
+      console.log("not found");
       goto("/");
     }
     privKey = $page.state;
     if (!privKey) {
-      console.log("session ends..")
+      console.log("session ends..");
       goto("/");
     }
-    const signer = new NDKPrivateKeySigner(privKey.toString());
+
+    const signer = new NDKPrivateKeySigner(privKey);
     ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
     await ndk.connect();
 
@@ -49,18 +50,16 @@
     query = `${city.cityName}, ${city.cityCountry}`;
     avatar = profile.avatar || "";
 
-    await ndk
-      .fetchEvents({ kinds: [1], authors: [npub] })
-      .then((events) => {
-        if (events.size > 0) {
-          hasAlreadySubmitted = true;
-        }
-      });
+    await ndk.fetchEvents({ kinds: [1], authors: [npub] }).then((events) => {
+      if (events.size > 0) {
+        hasAlreadySubmitted = true;
+      }
+    });
   });
 
   async function getUserProfile(ndk, npub) {
     const user = ndk.getUser({
-      npub
+      npub,
     });
 
     return await user.fetchProfile();
@@ -89,27 +88,27 @@
     }
 
     try {
-        const avatar = `${selectedAvatar}`;
-        await setProfileData(ndk, name, city, avatar);
-        goto("/", {state: privKey});
-      } catch (error) {
-        console.error("Error saving profile data:", error);
-        alert("Failed to save profile data. Please try again.");
-      }
+      const avatar = `${selectedAvatar}`;
+      await setProfileData(ndk, name, city, avatar);
+      goto("/", { state: privKey });
+    } catch (error) {
+      console.error("Error saving profile data:", error);
+      alert("Failed to save profile data. Please try again.");
     }
+  }
 
-    async function setProfileData(ndk, name, city, avatar) {
-      const metadataEvent = new NDKEvent(ndk);
-      metadataEvent.kind = 0;
-      const content = JSON.stringify({
-        name: name,
-        city: city,
-        avatar: avatar,
-      });
-      metadataEvent.content = content;
-      await metadataEvent.sign();
-      await metadataEvent.publish();
-    }
+  async function setProfileData(ndk, name, city, avatar) {
+    const metadataEvent = new NDKEvent(ndk);
+    metadataEvent.kind = 0;
+    const content = JSON.stringify({
+      name: name,
+      city: city,
+      avatar: avatar,
+    });
+    metadataEvent.content = content;
+    await metadataEvent.sign();
+    await metadataEvent.publish();
+  }
 
   function showAvatars() {
     showModal = true;
@@ -121,7 +120,7 @@
   }
 
   function goBack() {
-    goto("/", {state: privKey});
+    goto("/", { state: privKey });
   }
 
   function searchCities(query) {
@@ -152,7 +151,8 @@
       })
       .catch((err) => {
         console.error("Failed to copy: ", err);
-      }).finally(() => setTimeout(() => showAlertOnCopyNpub = false, 1500));
+      })
+      .finally(() => setTimeout(() => (showAlertOnCopyNpub = false), 1500));
   }
 
   function nsec(hexKey) {
@@ -366,7 +366,9 @@
               {/if}
             </div>
           </div>
-          <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0 npub-container">
+          <div
+            class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0 npub-container"
+          >
             <dt class="text-sm font-medium leading-6 text-gray-300">
               Your public key
             </dt>
@@ -384,10 +386,18 @@
             </dd>
             <div class="left-10 flex items-center">
               {#if !showAlertOnCopyNpub}
-                <button on:click={copyNpub} class="copy-button text-sm text-gray-300"> copy </button>
+                <button
+                  on:click={copyNpub}
+                  class="copy-button text-sm text-gray-300"
+                >
+                  copy
+                </button>
               {/if}
               {#if showAlertOnCopyNpub}
-                <div class="text-sm text-blue-800 rounded-lg dark:text-blue-400" role="alert">
+                <div
+                  class="text-sm text-blue-800 rounded-lg dark:text-blue-400"
+                  role="alert"
+                >
                   <button class="font-medium">copied!</button>
                 </div>
               {/if}
@@ -408,9 +418,9 @@
               <p
                 class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-2 sm:mt-0 break-words"
               >
-              {#if privKey}
-                <PasswordDisplay password={nsec(privKey)} />
-              {/if}
+                {#if privKey}
+                  <PasswordDisplay password={nsec(privKey)} />
+                {/if}
               </p>
             </dd>
           </div>

@@ -112,18 +112,15 @@
       signer: signer,
     });
 
-    // (await new NDKPrivateKeySigner().user()).pubkey
     pubkey = (await signer.user()).pubkey;
 
-    ndk
-      .connect()
+    await ndk.connect();
+    setProfileData(ndk, name, city, avatar)
       .then(() => {
-        setProfileData(ndk, name, city, avatar).then(() => {
-          getUserProfile(ndk, pubkey).then((_) => {
-            if (isMessageValid && name.length > 0) {
-              handleSubmit();
-            }
-          });
+        getUserProfile(ndk, pubkey).then((_) => {
+          if (isMessageValid && name.length > 0) {
+            handleSubmit();
+          }
         });
       })
       .then(() => initMessages());
@@ -146,10 +143,10 @@
       avatar: avatar,
     });
     metadataEvent.content = content;
-    await metadataEvent.sign().then((signature) => metadataEvent.publish());
-    // setTimeout(async () => {
-    //   await metadataEvent.publish();
-    // }, 1000);
+    // await metadataEvent.sign().then((signature) => metadataEvent.publish());
+    setTimeout(async () => {
+      await metadataEvent.publish();
+    }, 100);
   }
 
   async function handleLogin(event) {
@@ -227,7 +224,7 @@
     if (Object.keys(preloadKey).length === 0) {
       return;
     } else {
-      privKey = preloadKey.toString();
+      privKey = preloadKey;
     }
 
     if (privKey) {
