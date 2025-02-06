@@ -33,7 +33,6 @@
     since: getBODTimestamp(),
     until: getEODTimestamp(),
   };
-  new NDKEvent().filter;
   const KIND_40_FILTER = { kinds: [40] };
 
   let ndk;
@@ -273,28 +272,24 @@
   }
 
   async function initMessages() {
-    subscription = ndk.subscribe([SUBSCRIPTION_FILTER, KIND_0_FILTER], {
-      closeOnEose: false,
-    });
+    subscription = ndk.subscribe([SUBSCRIPTION_FILTER, KIND_0_FILTER]);
     subscription.on("event", async (event) => {
+      console.log("INIT SUB MESSAGE: ", event);
+
       const eventCity = {
         cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
         cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
       };
 
-      if (isRootNote(event) && isTheSameCity(city, eventCity)) {
-        addMessage(event);
-      }
-
-      if (selectedAuthor.length === 0 && isTheSameCity(city, eventCity)) {
+      if (isTheSameCity(city, eventCity) && isRootNote(event)) {
         await addMessage(event);
-      } else {
-        await fetchNestedSelect(selectedAuthor);
       }
 
-      handleReactions(event);
-
+      if (isTheSameCity(city, eventCity) && selectedAuthor.length === 0) {
+        await addMessage(event);
+      }
       await fetchMyFollower(event);
+      handleReactions(event);
     });
 
     ndk.fetchEvents([SUBSCRIPTION_FILTER]).then((events) => {
@@ -314,16 +309,23 @@
   }
 
   async function fetchMyFollower(event) {
+    console.log("DEBUG Checking for follower event:", event);
+    console.log("DEBUG pubkey:", pubkey);
+    console.log(
+      "DEBUG condition: ",
+      event.tags.find((t) => t[0] === "p" && t[1] === pubkey) !== undefined,
+    );
     if (
       isReplyNote(event) &&
-      event.tags.find((t) => t[0] === "p")?.[1] === pubkey
+      event.tags.find((t) => t[0] === "p" && t[1] === pubkey) !== undefined
     ) {
+      console.log("Found reply note targeting me");
       // Check if we're already in a group with this person
       const senderPubkey = event.pubkey;
-      if (eventsInGroup.has(senderPubkey)) {
-        console.log("Already in group with:", senderPubkey);
-        return; // Skip showing the alert
-      }
+      // if (eventsInGroup.has(senderPubkey)) {
+      //   console.log("Already in group with:", senderPubkey);
+      //   return; // Skip showing the alert
+      // }
 
       await ndk
         .fetchEvents({
@@ -333,9 +335,11 @@
           until: getEODTimestamp(),
         })
         .then((events) => {
+          console.log("Fetched author events:", events);
           events.forEach((e) => {
             if (isRootNote(e)) {
               getUserProfile(ndk, e.pubkey).then((profile) => {
+                console.log("Got user profile:", profile);
                 myFollowEvent = {
                   ...e,
                   author: {
@@ -344,6 +348,7 @@
                   },
                 };
                 if (!eventsInGroup.has(event.pubkey)) {
+                  console.log("Showing selection alert");
                   showYouGotSelected = true;
                 }
               });
@@ -372,11 +377,10 @@
       })
       .then((notes) => notes.forEach((e) => addMessage(e)));
 
-    subscription = ndk.subscribe([SUBSCRIPTION_FILTER, KIND_0_FILTER], {
-      closeOnEose: false,
-    });
+    subscription = ndk.subscribe([SUBSCRIPTION_FILTER, KIND_0_FILTER]);
 
     subscription.on("event", async (event) => {
+      console.log("CONNECTED INIT SUB MESSAGE: ", event);
       const eventCity = {
         cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
         cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
@@ -389,9 +393,8 @@
         await fetchNestedSelect(selectedAuthor);
       }
 
-      handleReactions(event);
-
       await fetchMyFollower(event);
+      handleReactions(event);
     });
   }
   // todo: loop over all messages and take their pubkey and check
@@ -492,8 +495,6 @@
       return;
     }
     localStorage.setItem("selected", selectedAuthor);
-    console.log("selecting: ", selectedAuthor);
-    const ownNoteFilter = { kinds: [1], authors: [pubkey] };
     const ownEvent = messages.filter((m) => m.pubkey === pubkey)[0];
     const replyEvent = new NDKEvent(ndk);
     replyEvent.kind = 1;
@@ -502,16 +503,18 @@
       ["alt", "reply"],
       ["p", selectedAuthor],
     ];
-    replyEvent.content = (ownEvent && ownEvent.content) || "";
+    replyEvent.content = ownEvent?.content || "";
     messages = [];
-    replyEvent.publish().then(() => {
-      subscription.stop();
-      userProfiles.clear();
-      initConnectedMessages();
-    });
+    setTimeout(async () => {
+      replyEvent.publish().then(() => {
+        console.log("PUBLISHED REPLY EVENT: ", replyEvent);
+        // subscription.stop();
+        userProfiles.clear();
+        initConnectedMessages();
+      });
+    }, 200);
   }
 
-  // TODO why is it calling so many times??
   function parseEventContent(event) {
     // Find tags by name
     const getTag = (name) => {
@@ -706,7 +709,7 @@
   function handleReactions(event) {
     if (event.kind === 7) {
       console.log("reaction: ", event);
-      if (event.tags.find((t) => t[1] === pubkey)) {
+      if (event.tags.find((t) => t[0] === "p" && t[1] === pubkey)) {
         console.log("reaction to my note: ", event);
         const targetEventPubkey = event.pubkey;
         if (event.content === "+") {
