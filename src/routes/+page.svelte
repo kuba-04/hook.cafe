@@ -287,18 +287,14 @@
       }
 
       if (selectedAuthor.length === 0 && isTheSameCity(city, eventCity)) {
-        // console.log("SUB all from same city: ", event);
         await addMessage(event);
       } else {
         await fetchNestedSelect(selectedAuthor);
       }
 
-      await fetchMyFollower(event);
+      handleReactions(event);
 
-      console.log(
-        "MESSAGES: ",
-        messages.map((m) => m.pubkey),
-      );
+      await fetchMyFollower(event);
     });
 
     ndk.fetchEvents([SUBSCRIPTION_FILTER]).then((events) => {
@@ -311,8 +307,6 @@
         if (isRootNote(event) && isTheSameCity(city, eventCity)) {
           addMessage(event);
         }
-
-        console.log("KIND 7 in init fetch: ", event.kind === 7);
 
         handleReactions(event);
       }
@@ -399,11 +393,6 @@
 
       await fetchMyFollower(event);
     });
-
-    console.log(
-      "MESSAGES: ",
-      messages.map((m) => m.pubkey),
-    );
   }
   // todo: loop over all messages and take their pubkey and check
   // if event which is coming from the subscription here, has + content
