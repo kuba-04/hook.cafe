@@ -40,6 +40,14 @@
       goto("/");
     }
 
+    if (typeof privKey === "string") {
+      privKey = new Uint8Array(
+        privKey.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)),
+      );
+    } else if (!(privKey instanceof Uint8Array)) {
+      privKey = new TextEncoder().encode(privKey);
+    }
+
     const signer = new NDKPrivateKeySigner(privKey);
     ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
     await ndk.connect();

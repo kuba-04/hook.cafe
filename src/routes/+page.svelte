@@ -143,7 +143,6 @@
       avatar: avatar,
     });
     metadataEvent.content = content;
-    // await metadataEvent.sign().then((signature) => metadataEvent.publish());
     setTimeout(async () => {
       await metadataEvent.publish();
     }, 100);
