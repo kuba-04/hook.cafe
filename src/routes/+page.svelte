@@ -274,8 +274,6 @@
   async function initMessages() {
     subscription = ndk.subscribe([SUBSCRIPTION_FILTER, KIND_0_FILTER]);
     subscription.on("event", async (event) => {
-      console.log("INIT SUB MESSAGE: ", event);
-
       const eventCity = {
         cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
         cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
@@ -309,24 +307,10 @@
   }
 
   async function fetchMyFollower(event) {
-    console.log("DEBUG Checking for follower event:", event);
-    console.log("DEBUG pubkey:", pubkey);
-    console.log(
-      "DEBUG condition: ",
-      event.tags.find((t) => t[0] === "p" && t[1] === pubkey) !== undefined,
-    );
     if (
       isReplyNote(event) &&
       event.tags.find((t) => t[0] === "p" && t[1] === pubkey) !== undefined
     ) {
-      console.log("Found reply note targeting me");
-      // Check if we're already in a group with this person
-      const senderPubkey = event.pubkey;
-      // if (eventsInGroup.has(senderPubkey)) {
-      //   console.log("Already in group with:", senderPubkey);
-      //   return; // Skip showing the alert
-      // }
-
       await ndk
         .fetchEvents({
           kinds: [1],
@@ -335,11 +319,10 @@
           until: getEODTimestamp(),
         })
         .then((events) => {
-          console.log("Fetched author events:", events);
           events.forEach((e) => {
             if (isRootNote(e)) {
+              addMessage(e);
               getUserProfile(ndk, e.pubkey).then((profile) => {
-                console.log("Got user profile:", profile);
                 myFollowEvent = {
                   ...e,
                   author: {
@@ -348,7 +331,6 @@
                   },
                 };
                 if (!eventsInGroup.has(event.pubkey)) {
-                  console.log("Showing selection alert");
                   showYouGotSelected = true;
                 }
               });
@@ -380,14 +362,12 @@
     subscription = ndk.subscribe([SUBSCRIPTION_FILTER, KIND_0_FILTER]);
 
     subscription.on("event", async (event) => {
-      console.log("CONNECTED INIT SUB MESSAGE: ", event);
       const eventCity = {
         cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
         cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
       };
 
       if (selectedAuthor.length === 0 && isTheSameCity(city, eventCity)) {
-        console.log("SUB all from same city: ", event);
         await addMessage(event);
       } else {
         await fetchNestedSelect(selectedAuthor);
@@ -411,7 +391,6 @@
     const childEvent = [...nested].filter((event) => isReplyNote(event))[0];
     if (childEvent) {
       const childEventKey = childEvent.tagValue("p");
-      console.log("child found: ", childEventKey);
       ndk
         .fetchEvents({
           kinds: [1],
@@ -420,15 +399,12 @@
           until: getEODTimestamp(),
         })
         .then((e) => {
-          console.log("FETCHED NESTED found: ", e);
           const rootEvent = Array.from(e).filter((m) => isRootNote(m))[0];
           if (rootEvent) {
-            console.log("rootEvent found: ", rootEvent);
             addMessage(rootEvent);
           }
           const replyEvent = Array.from(e).filter((m) => isReplyNote(m))[0];
           if (replyEvent) {
-            console.log("replyEvent found: ", replyEvent);
             fetchNestedSelect(replyEvent);
           }
         });
@@ -507,7 +483,6 @@
     messages = [];
     setTimeout(async () => {
       replyEvent.publish().then(() => {
-        console.log("PUBLISHED REPLY EVENT: ", replyEvent);
         // subscription.stop();
         userProfiles.clear();
         initConnectedMessages();
@@ -708,16 +683,16 @@
 
   function handleReactions(event) {
     if (event.kind === 7) {
-      console.log("reaction: ", event);
-      if (event.tags.find((t) => t[0] === "p" && t[1] === pubkey)) {
-        console.log("reaction to my note: ", event);
+      if (
+        event.tags.find((t) => t[0] === "p" && t[1] === pubkey) !== undefined
+      ) {
         const targetEventPubkey = event.pubkey;
         if (event.content === "+") {
-          console.log("liked my note: ", event);
           eventsInGroup.add(targetEventPubkey);
           eventsInGroup.add(pubkey); // I am also in the group
           eventsInGroup = eventsInGroup;
         } else if (event.content === "-") {
+          // TODO: remove from group
           console.log("disliked my note: ", event);
         }
       } else {
@@ -731,25 +706,17 @@
             (m) => m.pubkey === reactorPubkey || m.pubkey === targetPubkey,
           );
 
-          if (isInMessages && madeDecision()) {
-            eventsInGroup.add(reactorPubkey);
-            eventsInGroup.add(targetPubkey);
-            eventsInGroup = eventsInGroup;
-            console.log(
-              "Added to group from external reaction:",
-              reactorPubkey,
-              targetPubkey,
-            );
-          } else if (
+          if (
             isInMessages &&
-            !madeDecision() &&
-            (targetPubkey === pubkey || reactorPubkey === pubkey)
+            (madeDecision() ||
+              (!madeDecision() &&
+                [pubkey, selectedAuthor].some((key) =>
+                  [targetPubkey, reactorPubkey].includes(key),
+                )))
           ) {
-            console.log("check only one I accepted");
             eventsInGroup.add(reactorPubkey);
             eventsInGroup.add(targetPubkey);
             eventsInGroup = eventsInGroup;
-            console.log("EVENTS IN GROUP: ", eventsInGroup);
           }
         }
       }
@@ -1017,7 +984,6 @@
                 eventData={myFollowEvent}
                 on:reaction={async (event) => {
                   const { reactionData } = event.detail;
-                  console.log("Received reaction event:", reactionData);
                   try {
                     const reactionEvent = new NDKEvent(ndk);
                     reactionEvent.kind = reactionData.kind;
@@ -1032,10 +998,7 @@
                       eventsInGroup.add(pubkey); // Add myself
                       eventsInGroup.add(followerPubkey); // Add the follower
                       eventsInGroup = eventsInGroup; // Trigger Svelte reactivity
-                      console.log("Added to group:", pubkey, followerPubkey);
                     }
-
-                    console.log("Reaction published successfully");
                   } catch (error) {
                     console.error("Error publishing reaction:", error);
                   } finally {
@@ -1061,7 +1024,7 @@
                             src={message.author && message.author?.avatar}
                             alt=""
                           />
-                          {#if (madeDecision() || eventsInGroup.size > 0) && eventsInGroup.has(message.pubkey)}
+                          {#if eventsInGroup.size > 0 && eventsInGroup.has(message.pubkey)}
                             <div class="absolute -bottom-1 -right-1">
                               <span class="text-xs">✅</span>
                             </div>
