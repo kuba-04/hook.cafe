@@ -1,14 +1,29 @@
+<<<<<<< HEAD
 <script lang="ts">
     import FlippingCard from "$lib/FlippingCard.svelte";
     import { page } from "$app/stores";
     import Footer from "./Footer.svelte";
 
     export let onClose: () => void;
+=======
+<script>
+    import FlippingCard from "$lib/FlippingCard.svelte";
+    import { page } from "$app/stores";
+    import Footer from "./Footer.svelte";
+>>>>>>> master
 
     let isModal: boolean = $page.route.id !== "/inspiration";
     let isImage1: boolean = true;
 
+<<<<<<< HEAD
     const toggleImages = (): void => {
+=======
+    let isModal = $page.route.id !== "/inspiration";
+
+    let isImage1 = true;
+
+    const toggleImages = () => {
+>>>>>>> master
         isImage1 = !isImage1;
     };
 </script>
@@ -24,8 +39,11 @@
     ></div>
 
     <div
+<<<<<<< HEAD
         role="button"
         tabindex="0"
+=======
+>>>>>>> master
         class="relative z-10 bg-amber-50 bg-opacity-75 rounded-2xl p-5 flex flex-col items-center justify-center w-11/12 max-w-2xl"
         on:mouseenter={toggleImages}
         on:mouseleave={toggleImages}
@@ -57,8 +75,11 @@
         style="background-image: url('/images/inspiration/discuss-cartoon.png'); background-position: center; background-size: cover;"
     >
         <div
+<<<<<<< HEAD
             role="button"
             tabindex="0"
+=======
+>>>>>>> master
             class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md"
             style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
             on:mouseenter={toggleImages}
@@ -77,8 +98,11 @@
         style="background-image: url('/images/inspiration/discuss.jpg'); background-position: center; background-size: cover;"
     >
         <div
+<<<<<<< HEAD
             role="button"
             tabindex="0"
+=======
+>>>>>>> master
             class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md"
             style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
             on:mouseenter={toggleImages}
@@ -104,8 +128,11 @@
         style="background-image: url('/images/inspiration/book-cartoon.png'); background-position: center; background-size: cover;"
     >
         <div
+<<<<<<< HEAD
             role="button"
             tabindex="0"
+=======
+>>>>>>> master
             class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md"
             style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
             on:mouseenter={toggleImages}
@@ -124,8 +151,11 @@
         style="background-image: url('/images/inspiration/book.jpg'); background-position: center; background-size: cover;"
     >
         <div
+<<<<<<< HEAD
             role="button"
             tabindex="0"
+=======
+>>>>>>> master
             class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md"
             style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
             on:mouseenter={toggleImages}
@@ -151,8 +181,11 @@
         style="background-image: url('/images/inspiration/table-cartoon.png'); background-position: center; background-size: cover;"
     >
         <div
+<<<<<<< HEAD
             role="button"
             tabindex="0"
+=======
+>>>>>>> master
             class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md"
             style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
             on:mouseenter={toggleImages}
@@ -172,8 +205,11 @@
         style="background-image: url('/images/inspiration/table.jpg'); background-position: center; background-size: cover;"
     >
         <div
+<<<<<<< HEAD
             role="button"
             tabindex="0"
+=======
+>>>>>>> master
             class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md"
             style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
             on:mouseenter={toggleImages}
@@ -214,14 +250,22 @@
             <li class="flex items-center">
                 <span class=" flex items-center justify-center mr-5"> 🍕 </span>
                 <span class="ml-2"
+<<<<<<< HEAD
                     >Don't eat alone! Meet real people and have some discussion!</span
+=======
+                    >Don’t eat alone! Meet real people and have some discussion!</span
+>>>>>>> master
                 >
             </li>
 
             <li class="flex items-center">
                 <span class=" flex items-center justify-center mr-5"> 😅 </span>
                 <span class="ml-2"
+<<<<<<< HEAD
                     >You don't want awkward 1:1 date with a stranger? Join a
+=======
+                    >You don’t want awkward 1:1 date with a stranger? Join a
+>>>>>>> master
                     group and chill out!
                 </span>
             </li>
@@ -265,6 +309,7 @@
 
 <section class="relative flex items-center justify-center h-screen bg-black">
     <div
+<<<<<<< HEAD
         class="absolute inset-0 bg-cover bg-no-repeat"
         style="background-image: url('/images/inspiration/oldmen.jpg'); background-position: center; background-size: cover;"
     >
@@ -275,15 +320,84 @@
             <h1
                 class="text-4xl md:text-4xl sm:text-2xl font-bold text-center text-gray-700 py-5 px-2"
             >
+=======
+        class={`absolute inset-0 transition-opacity duration-1000 ease-in-out bg-cover bg-center ${isImage1 ? "opacity-100" : "opacity-0"}`}
+        style="background-image: url('/images/inspiration/oldmen-cartoon.png'); background-position: center; background-size: cover;"
+    >
+        <div
+            on:mouseenter={toggleImages}
+            on:mouseleave={toggleImages}
+            class="absolute z-10 bg-amber-50 bg-opacity-70 p-5 flex items-start justify-center w-8/12 max-w-md"
+            style="top: 20%; left: 50%; transform: translate(-50%, -50%);"
+        >
+            <h1 class="text-4xl font-bold text-center text-gray-700 py-5">
+                Inspired by Mediterranean travels..
+            </h1>
+        </div>
+    </div>
+    <div
+        class={`absolute inset-0 transition-opacity duration-1000 ease-in-out bg-cover bg-center ${isImage1 ? "opacity-0" : "opacity-100"}`}
+        style="background-image: url('/images/inspiration/oldmen.jpg'); background-position: center; background-size: cover;"
+    >
+        <div
+            on:mouseenter={toggleImages}
+            on:mouseleave={toggleImages}
+            class="absolute z-10 bg-amber-50 bg-opacity-70 p-5 flex items-start justify-center w-8/12 max-w-md"
+            style="top: 20%; left: 50%; transform: translate(-50%, -50%);"
+        >
+            <h1 class="text-4xl font-bold text-center text-gray-700 py-5">
+>>>>>>> master
                 Inspired by Mediterranean travels..
             </h1>
         </div>
     </div>
 </section>
 
+<!-- <section class="relative flex items-center justify-center h-screen bg-black">
+    <div
+        class={`absolute inset-0 transition-opacity duration-1000 ease-in-out bg-cover bg-center ${isImage1 ? "opacity-100" : "opacity-0"}`}
+        style="background-image: url('/images/inspiration/table-cartoon.png'); background-position: center; background-size: cover;"
+    >
+        <div
+            class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md"
+            style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
+            on:mouseenter={toggleImages}
+            on:mouseleave={toggleImages}
+        >
+            <h1 class="text-6xl font-bold text-center text-gray-700 py-5">
+                #3
+            </h1>
+            <h1 class="text-4xl font-bold text-center text-gray-700 py-5">
+                If 4 people of similar interest match, we'll help you eat out
+                together
+            </h1>
+        </div>
+    </div>
+    <div
+        class={`absolute inset-0 transition-opacity duration-1000 ease-in-out bg-cover bg-center ${isImage1 ? "opacity-0" : "opacity-100"}`}
+        style="background-image: url('/images/inspiration/table.jpg'); background-position: center; background-size: cover;"
+    >
+        <div
+            class="absolute z-10 bg-amber-50 bg-opacity-50 rounded-2xl p-5 flex flex-col items-center justify-center w-8/12 max-w-md"
+            style="top: 50%; left: 50%; transform: translate(-50%, -50%);"
+            on:mouseenter={toggleImages}
+            on:mouseleave={toggleImages}
+        >
+            <h1 class="text-6xl font-bold text-center text-gray-700 py-5">
+                #3
+            </h1>
+            <h1 class="text-4xl font-bold text-center text-gray-700 py-5">
+                If 4 people of similar interest match, we'll help you eat out
+                together
+            </h1>
+        </div>
+    </div>
+</section> -->
+
 <div class="flex items-center justify-center h-200 bg-black">
     <div class="py-20">
         {#if isModal}
+<<<<<<< HEAD
             <div
                 class="cursor-pointer"
                 role="button"
@@ -291,6 +405,9 @@
                 on:click={onClose}
                 on:keydown={(e) => e.key === "Enter" && onClose()}
             >
+=======
+            <div on:click={onClose} class="cursor-pointer">
+>>>>>>> master
                 <h1 class="text-4xl font-bold text-center text-amber-50 py-5">
                     Back to app
                 </h1>
