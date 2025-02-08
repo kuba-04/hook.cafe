@@ -1,102 +1,102 @@
 [
     {
         "name": "bear",
-        "path": "/images/avatars/bear.png"
+        "path": "https://hook.cafe/files/avatars/bear.png"
     },
     {
         "name": "bearTeddy",
-        "path": "/images/avatars/bear-teddy.png"
+        "path": "https://hook.cafe/files/avatars/bear-teddy.png"
     },
     {
         "name": "birdSing",
-        "path": "/images/avatars/bird-sing.png"
+        "path": "https://hook.cafe/files/avatars/bird-sing.png"
     },
     {
         "name": "bird",
-        "path": "/images/avatars/bird.png"
+        "path": "https://hook.cafe/files/avatars/bird.png"
     },
     {
         "name": "bird2",
-        "path": "/images/avatars/bird2.png"
+        "path": "https://hook.cafe/files/avatars/bird2.png"
     },
     {
         "name": "cat",
-        "path": "/images/avatars/cat.png"
+        "path": "https://hook.cafe/files/avatars/cat.png"
     },
     {
         "name": "crab",
-        "path": "/images/avatars/crab.png"
+        "path": "https://hook.cafe/files/avatars/crab.png"
     },
     {
         "name": "crocodile",
-        "path": "/images/avatars/crocodile.png"
+        "path": "https://hook.cafe/files/avatars/crocodile.png"
     },
     {
         "name": "dino",
-        "path": "/images/avatars/dino.png"
+        "path": "https://hook.cafe/files/avatars/dino.png"
     },
     {
         "name": "dogBig",
-        "path": "/images/avatars/dog-big.png"
+        "path": "https://hook.cafe/files/avatars/dog-big.png"
     },
     {
         "name": "dogLittle",
-        "path": "/images/avatars/dog-little.png"
+        "path": "https://hook.cafe/files/avatars/dog-little.png"
     },
     {
         "name": "dog1",
-        "path": "/images/avatars/dog1.png"
+        "path": "https://hook.cafe/files/avatars/dog1.png"
     },
     {
         "name": "dolphin",
-        "path": "/images/avatars/dolphin.png"
+        "path": "https://hook.cafe/files/avatars/dolphin.png"
     },
     {
         "name": "dolphinFun",
-        "path": "/images/avatars/dolphin-fun.png"
+        "path": "https://hook.cafe/files/avatars/dolphin-fun.png"
     },
     {
         "name": "elephant",
-        "path": "/images/avatars/elephant.png"
+        "path": "https://hook.cafe/files/avatars/elephant.png"
     },
     {
         "name": "elephant2",
-        "path": "/images/avatars/elephant2.png"
+        "path": "https://hook.cafe/files/avatars/elephant2.png"
     },
     {
         "name": "fishGold",
-        "path": "/images/avatars/fish-gold.png"
+        "path": "https://hook.cafe/files/avatars/fish-gold.png"
     },
     {
         "name": "giraffe",
-        "path": "/images/avatars/giraffe.png"
+        "path": "https://hook.cafe/files/avatars/giraffe.png"
     },
     {
         "name": "lion",
-        "path": "/images/avatars/lion.png"
+        "path": "https://hook.cafe/files/avatars/lion.png"
     },
     {
         "name": "monkey",
-        "path": "/images/avatars/monkey.png"
+        "path": "https://hook.cafe/files/avatars/monkey.png"
     },
     {
         "name": "mosquito",
-        "path": "/images/avatars/mosquito.png"
+        "path": "https://hook.cafe/files/avatars/mosquito.png"
     },
     {
         "name": "mouse",
-        "path": "/images/avatars/mouse.png"
+        "path": "https://hook.cafe/files/avatars/mouse.png"
     },
     {
         "name": "panda",
-        "path": "/images/avatars/panda.png"
+        "path": "https://hook.cafe/files/avatars/panda.png"
     },
     {
         "name": "penguin",
-        "path": "/images/avatars/penguin.png"
+        "path": "https://hook.cafe/files/avatars/penguin.png"
     },
     {
         "name": "tiger",
-        "path": "/images/avatars/tiger.png"
+        "path": "https://hook.cafe/files/avatars/tiger.png"
     }
 ]

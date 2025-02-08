@@ -1,12 +1,15 @@
-<script>
-    import { createEventDispatcher } from 'svelte';
+<script lang="ts">
+  import { createEventDispatcher } from "svelte";
 
-    const dispatch = createEventDispatcher();
+  const dispatch = createEventDispatcher<{
+    showAlert: boolean;
+  }>();
 
-    function dispatchChangeEvent() {
-        dispatch('showAlert', false );
-    }
+  function dispatchChangeEvent(): void {
+    dispatch("showAlert", false);
+  }
 </script>
+
 <div
   class="flex items-center p-4 mb-4 text-sm text-green-800 rounded-lg bg-gray-800 dark:text-green-400"
   role="alert"

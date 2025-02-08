@@ -1,5 +1,17 @@
+<script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher<{
+    showAlert: boolean;
+  }>();
+
+  function dispatchChangeEvent(): void {
+    dispatch("showAlert", false);
+  }
+</script>
+
 <div
-  class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 text-yellow-300"
+  class="flex items-center p-4 mb-4 text-sm text-red-800 rounded-lg bg-gray-800 dark:text-red-400"
   role="alert"
 >
   <svg
@@ -14,7 +26,7 @@
     />
   </svg>
   <span class="sr-only">Info</span>
-  <span class="text-lg font-semibold leading-6 text-white">
-    Please fill out all the fields!
-  </span>
+  <div>
+    <span class="font-medium">Please fill in all fields!</span>
+  </div>
 </div>

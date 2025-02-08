@@ -1,6 +1,11 @@
-<script>
+<script lang="ts">
   import Modal from "../../../lib/Modal.svelte";
-  import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+  import NDK, {
+    NDKEvent,
+    NDKPrivateKeySigner,
+    type NDKUser,
+    type NDKUserProfile,
+  } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
   import { env } from "$env/dynamic/public";
   import { goto } from "$app/navigation";
@@ -10,11 +15,18 @@
   import { page } from "$app/stores";
   import { nip19 } from "nostr-tools";
 
+  interface City {
+    cityName: string;
+    cityCountry: string;
+  }
+
   let selectedAvatar = "";
-  let ndk;
+  let ndk: NDK;
   let name = "";
-  let npub;
-  let privKey;
+  let npub: string;
+  let hexPubkey: string;
+  let privKey: string = "";
+  let keyArray: Uint8Array;
   let avatar = "";
   let showModal = false;
   let showAlertOnSave = false;
@@ -23,9 +35,10 @@
   let showAlertOnCopyNpub = false;
 
   let query = "";
-  let results = [];
-  let city = null;
-  let avatars = [];
+  let results: Array<{ name: string; country: string; population: number }> =
+    [];
+  let city: City | null = null;
+  let avatars: string[] = [];
 
   onMount(async () => {
     avatars = getAllAvatars();
@@ -34,58 +47,76 @@
       console.log("not found");
       goto("/");
     }
-    privKey = $page.state;
+    privKey = $page.state?.privKey;
     if (!privKey) {
       console.log("session ends..");
       goto("/");
     }
 
     if (typeof privKey === "string") {
-      privKey = new Uint8Array(
-        privKey.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)),
+      keyArray = new Uint8Array(
+        privKey.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [],
       );
-    } else if (!(privKey instanceof Uint8Array)) {
-      privKey = new TextEncoder().encode(privKey);
     }
 
-    const signer = new NDKPrivateKeySigner(privKey);
+    const signer = new NDKPrivateKeySigner(keyArray);
     ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
     await ndk.connect();
 
     const profile = await getUserProfile(ndk, npub);
     name = profile.name || "";
-    city = profile.city || null;
-    query = `${city.cityName}, ${city.cityCountry}`;
-    avatar = profile.avatar || "";
+    if (profile.about) {
+      const [cityName, cityCountry] = profile.about.split(",");
+      city = cityName && cityCountry ? { cityName, cityCountry } : null;
+    }
+    query = city ? `${city.cityName}, ${city.cityCountry}` : "";
+    avatar = profile.image || "";
 
-    await ndk.fetchEvents({ kinds: [1], authors: [npub] }).then((events) => {
-      if (events.size > 0) {
-        hasAlreadySubmitted = true;
-      }
-    });
+    ndk
+      .fetchEvents({
+        kinds: [1],
+        authors: [hexPubkey],
+        since: getBODTimestamp(),
+        until: getEODTimestamp(),
+      })
+      .then((events) => {
+        if (events.size > 0) {
+          hasAlreadySubmitted = true;
+        }
+      });
   });
 
-  async function getUserProfile(ndk, npub) {
+  function getBODTimestamp(): number {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return parseInt(today.getTime().toString().substring(0, 10));
+  }
+
+  function getEODTimestamp(): number {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return parseInt(today.getTime().toString().substring(0, 10));
+  }
+
+  async function getUserProfile(
+    ndk: NDK,
+    npub: string,
+  ): Promise<NDKUserProfile> {
     const user = ndk.getUser({
       npub,
     });
-
-    return await user.fetchProfile();
+    hexPubkey = user.pubkey;
+    await user.fetchProfile();
+    return user.profile || ({} as NDKUserProfile);
   }
 
-  function selectAvatar(av) {
+  function selectAvatar(av: string): void {
     selectedAvatar = av;
     showModal = false;
     avatar = av;
   }
 
-  async function save() {
-    // todo: potentially an alert here
-    // if (hasAlreadySubmitted) {
-    //   showAlertOnAlreadySubmitted = true;
-    //   setTimeout(() => showAlertOnAlreadySubmitted = false, 3000);
-    //   return;
-    // }
+  async function save(): Promise<void> {
     if (city === null || name.length === 0) {
       showAlertOnSave = true;
       setTimeout(() => (showAlertOnSave = false), 1500);
@@ -98,40 +129,46 @@
     try {
       const avatar = `${selectedAvatar}`;
       await setProfileData(ndk, name, city, avatar);
-      goto("/", { state: privKey });
+      goto("/", { state: { privKey } });
+      return;
     } catch (error) {
       console.error("Error saving profile data:", error);
       alert("Failed to save profile data. Please try again.");
     }
   }
 
-  async function setProfileData(ndk, name, city, avatar) {
+  async function setProfileData(
+    ndk: NDK,
+    name: string,
+    city: City | null,
+    avatar: string,
+  ): Promise<void> {
     const metadataEvent = new NDKEvent(ndk);
     metadataEvent.kind = 0;
     const content = JSON.stringify({
       name: name,
-      city: city,
-      avatar: avatar,
+      about: city ? `${city.cityName},${city.cityCountry}` : "",
+      image: avatar,
     });
     metadataEvent.content = content;
     await metadataEvent.sign();
     await metadataEvent.publish();
   }
 
-  function showAvatars() {
+  function showAvatars(): void {
     showModal = true;
   }
 
-  function logout() {
+  function logout(): void {
     localStorage.clear();
     goto("/");
   }
 
-  function goBack() {
-    goto("/", { state: privKey });
+  function goBack(): void {
+    goto("/", { state: { privKey } });
   }
 
-  function searchCities(query) {
+  function searchCities(query: string): void {
     const normalizedQuery = query.toLowerCase().trim();
     results = citiesData
       .filter((city) => city.name.toLowerCase().startsWith(normalizedQuery))
@@ -139,19 +176,20 @@
       .slice(0, 10);
   }
 
-  function handleInputCity(event) {
-    query = event.target.value;
+  function handleInputCity(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    query = target.value;
     city = null;
     searchCities(query);
   }
 
-  function selectCity(c) {
+  function selectCity(c: { name: string; country: string }): void {
     city = { cityName: c.name, cityCountry: c.country };
     query = `${c.name}, ${c.country}`;
     results = [];
   }
 
-  function copyNpub() {
+  function copyNpub(): void {
     navigator.clipboard
       .writeText(npub)
       .then(() => {
@@ -163,8 +201,15 @@
       .finally(() => setTimeout(() => (showAlertOnCopyNpub = false), 1500));
   }
 
-  function nsec(hexKey) {
-    return nip19.nsecEncode(hexKey);
+  function nsec(hexKey: string | Uint8Array): string {
+    if (typeof hexKey === "string") {
+      const bytes = new Uint8Array(
+        hexKey.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [],
+      );
+      return nip19.nsecEncode(bytes);
+    } else {
+      return nip19.nsecEncode(hexKey);
+    }
   }
 </script>
 

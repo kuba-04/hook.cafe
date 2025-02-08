@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   // You can import social media icons from a library or use SVGs
   const socialLinks = [{ name: "Github", href: "#", icon: "" }];
 </script>

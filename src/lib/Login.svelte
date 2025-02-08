@@ -1,42 +1,53 @@
-<script>
-  import { createEventDispatcher } from 'svelte';
-  import { getRandomAvatar } from './avatars';
-  import citiesData from './cities.json';
-  import { NDKPrivateKeySigner } from '@nostr-dev-kit/ndk';
+<script lang="ts">
+  import { createEventDispatcher } from "svelte";
+  import { getRandomAvatar } from "./avatars";
+  import citiesData from "./cities.json";
+  import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { nip19 } from "nostr-tools";
+
+  interface City {
+    cityName: string;
+    cityCountry: string;
+  }
+
+  interface CityResult {
+    name: string;
+    country: string;
+    population: number;
+  }
 
   export let name = "";
   export let secretKey = ""; // we allow to log in with either hex and nsec
   export let privKey = "";
   export let nsec = "";
 
-  let query = '';
-  let results = [];
-  let city = null;
+  let query = "";
+  let results: CityResult[] = [];
+  let city: City | null = null;
 
   const dispatch = createEventDispatcher();
   const dispatchCitySelection = createEventDispatcher();
-  
+
   let hasAccount = false;
   let loading = false;
   let isNameValid = false;
 
-  const switchHasProfile = () => {
+  const switchHasProfile = (): void => {
     hasAccount = !hasAccount;
   };
 
-  const onUpdateName = () => {
+  const onUpdateName = (): void => {
     name = name;
-        isNameValid = name.length >= 3;
+    isNameValid = name.length >= 3;
   };
 
-  const handleRegister = async () => {
+  const handleRegister = async (): Promise<void> => {
     loading = true;
     try {
       const signer = NDKPrivateKeySigner.generate();
-      let avatar = getRandomAvatar() 
-      dispatchRegisteredEvent({name, avatar, city, signer});
-      localStorage.setItem('user', name );
+      let avatar = getRandomAvatar();
+      dispatchRegisteredEvent({ name, avatar, city, signer });
+      localStorage.setItem("user", name);
     } catch (error) {
       if (error instanceof Error) {
         alert(error.message);
@@ -48,12 +59,12 @@
     }
   };
 
-  const handleSignin = async () => {
+  const handleSignin = async (): Promise<void> => {
     loading = true;
 
     if (secretKey && secretKey.startsWith("nsec")) {
       try {
-        privKey = nip19.decode(secretKey).data;
+        privKey = nip19.decode(secretKey).data as string;
         new NDKPrivateKeySigner(privKey);
         nsec = secretKey;
       } catch (e) {
@@ -63,7 +74,7 @@
       try {
         new NDKPrivateKeySigner(secretKey);
         privKey = secretKey;
-        nsec = nip19.nsecEncode(privKey);
+        nsec = nip19.nsecEncode(new TextEncoder().encode(privKey));
       } catch (e) {
         console.log("invalid key");
       }
@@ -83,39 +94,51 @@
     }
   };
 
-  function dispatchLoggedInEvent(privKey) {
-    dispatch('login', { privKey });
+  function dispatchLoggedInEvent(privKey: string): void {
+    dispatch("login", { privKey });
   }
 
-  function dispatchRegisteredEvent({name, avatar, city, signer}) {
-    dispatch('register', { name, avatar, city, signer });
+  function dispatchRegisteredEvent({
+    name,
+    avatar,
+    city,
+    signer,
+  }: {
+    name: string;
+    avatar: string;
+    city: City | null;
+    signer: NDKPrivateKeySigner;
+  }): void {
+    dispatch("register", { name, avatar, city, signer });
   }
 
-  function searchCities(query) {
+  function searchCities(query: string): void {
     const normalizedQuery = query.toLowerCase().trim();
     results = citiesData
-      .filter(city => city.name.toLowerCase().startsWith(normalizedQuery))
+      .filter((city) => city.name.toLowerCase().startsWith(normalizedQuery))
       .sort((a, b) => b.population - a.population)
       .slice(0, 10);
   }
 
-  function handleInput(event) {
-    query = event.target.value;
+  function handleInput(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    query = target.value;
     city = null;
     searchCities(query);
-    dispatchCitySelection('change', { city });
+    dispatchCitySelection("change", { city });
   }
 
-  function selectCity(c) {
-    city = { "cityName": c.name, "cityCountry": c.country };
+  function selectCity(c: CityResult): void {
+    city = { cityName: c.name, cityCountry: c.country };
     query = `${c.name}, ${c.country}`;
     results = [];
-    dispatchCitySelection('change', { city });
+    dispatchCitySelection("change", { city });
   }
-
 </script>
 
-  <div class=" justify-center px-8 py-12 w-66 h-96 scrollbar-hidden overflow-y-scroll">
+<div
+  class=" justify-center px-8 py-12 w-66 h-96 scrollbar-hidden overflow-y-scroll"
+>
   {#if hasAccount}
     <div class="sm:mx-auto sm:w-full sm:max-w-sm">
       <h2
@@ -126,7 +149,7 @@
     </div>
 
     <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-      <form class="form-widget" on:submit|preventDefault="{handleSignin}">
+      <form class="form-widget" on:submit|preventDefault={handleSignin}>
         <div>
           <label
             for="secretKey"
@@ -139,7 +162,7 @@
               class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
               type="password"
               bind:value={secretKey}
-            /> 
+            />
           </div>
         </div>
 
@@ -171,8 +194,8 @@
       </h2>
     </div>
 
-    <div class="mt-10 sm:mx-auto  sm:max-w-sm">
-      <form class="form-widget" on:submit|preventDefault="{handleRegister}">
+    <div class="mt-10 sm:mx-auto sm:max-w-sm">
+      <form class="form-widget" on:submit|preventDefault={handleRegister}>
         <div>
           <div class="mt-2">
             <input
@@ -197,9 +220,14 @@
                 on:input={handleInput}
               />
               {#if results.length > 0}
-                <div class="absolute z-10 w-full bg-white rounded-md shadow-lg max-h-60 overflow-y-auto scrollbar-hidden">
+                <div
+                  class="absolute z-10 w-full bg-white rounded-md shadow-lg max-h-60 overflow-y-auto scrollbar-hidden"
+                >
                   {#each results as city}
-                    <button class="block w-full p-2 text-left cursor-pointer hover:bg-gray-200" on:click={() => selectCity(city)}>
+                    <button
+                      class="block w-full p-2 text-left cursor-pointer hover:bg-gray-200"
+                      on:click={() => selectCity(city)}
+                    >
                       {city.name}, {city.country}
                     </button>
                   {/each}
@@ -208,7 +236,6 @@
             </div>
           </div>
         </div>
-        
 
         <div class="mt-2">
           <button
