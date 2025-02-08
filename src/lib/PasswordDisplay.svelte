@@ -1,13 +1,13 @@
-<script>
+<script lang="ts">
   export let password = "";
   let showPassword = false;
   let showAlert = false;
 
-  function togglePasswordVisibility() {
+  function togglePasswordVisibility(): void {
     showPassword = !showPassword;
   }
 
-  function copyPassword() {
+  function copyPassword(): void {
     navigator.clipboard
       .writeText(password)
       .then(() => {
@@ -15,7 +15,8 @@
       })
       .catch((err) => {
         console.error("Failed to copy: ", err);
-      }).finally(() => setTimeout(() => showAlert = false, 1500));
+      })
+      .finally(() => setTimeout(() => (showAlert = false), 1500));
   }
 </script>
 
@@ -33,7 +34,10 @@
     <button on:click={copyPassword} class="copy-button"> copy </button>
   {/if}
   {#if showAlert}
-    <div class="max-h-4  text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400" role="alert">
+    <div
+      class="max-h-4 text-sm text-blue-800 rounded-lg bg-blue-50 dark:bg-gray-800 dark:text-blue-400"
+      role="alert"
+    >
       <button class="font-medium">copied!</button>
     </div>
   {/if}

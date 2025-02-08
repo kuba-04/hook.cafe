@@ -1,8 +1,17 @@
-<script>
-  export let content;
-  export let timestamp;
-  export let username;
-  export let isOwned;
+<script lang="ts">
+  export let content: string;
+  export let timestamp: string;
+  export let username: string;
+  export let isOwned: boolean;
+
+  // Parse the content if it's a JSON string
+  let messageContent: string;
+  try {
+    const parsed = JSON.parse(content);
+    messageContent = parsed.content;
+  } catch {
+    messageContent = content;
+  }
 </script>
 
 <div
@@ -24,7 +33,7 @@
       </div>
     {/if}
     <span
-      >{content}<span>
+      >{messageContent}<span>
         <span
           style="font-size:10px"
           class="absolute mx-2 my-1 break-all text-gray-500 bottom-0 right-0"

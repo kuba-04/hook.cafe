@@ -1,16 +1,15 @@
-<script>
-    import Footer from "./Footer.svelte";
+<script lang="ts">
+  import Footer from "./Footer.svelte";
 
-  export let showInspirationModal; // boolean
-
-  let dialog; // HTMLDialogElement
+  export let showInspirationModal: boolean;
+  let dialog: HTMLDialogElement;
 
   $: if (dialog && showInspirationModal) {
     dialog.showModal();
   }
 
-  export function closeModal() {
-    dialog.close();
+  export function closeModal(): void {
+    dialog?.close();
   }
 </script>
 
@@ -26,7 +25,7 @@
     <slot />
     <div class="absolute top-0 right-0 h-16 w-16">
       <p class="mt-4 text-4xl leading-8 text-black items-end">
-        <button on:click={() => dialog.close()} >✖️</button>
+        <button on:click={() => dialog.close()}>✖️</button>
       </p>
     </div>
   </div>
@@ -34,15 +33,12 @@
 </dialog>
 
 <style lang="postcss">
-  ::content {
-    background-color: rgb(17, 16, 15);
-  }
   dialog {
     border-radius: 1em;
     border: none;
     padding: 0;
     opacity: 90%;
-    background-color:black;
+    background-color: black;
     overflow: auto;
     width: 100%;
   }

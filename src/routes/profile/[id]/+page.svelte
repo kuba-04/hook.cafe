@@ -1,20 +1,32 @@
-<script>
+<script lang="ts">
   import Modal from "../../../lib/Modal.svelte";
-  import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+  import NDK, {
+    NDKEvent,
+    NDKPrivateKeySigner,
+    type NDKUser,
+    type NDKUserProfile,
+  } from "@nostr-dev-kit/ndk";
   import { onMount } from "svelte";
-  import { env } from '$env/dynamic/public';
+  import { env } from "$env/dynamic/public";
   import { goto } from "$app/navigation";
   import { getAllAvatars } from "$lib/avatars";
   import PasswordDisplay from "$lib/PasswordDisplay.svelte";
   import citiesData from "../../../lib/cities.json";
-  import { page } from '$app/stores';
+  import { page } from "$app/stores";
   import { nip19 } from "nostr-tools";
 
+  interface City {
+    cityName: string;
+    cityCountry: string;
+  }
+
   let selectedAvatar = "";
-  let ndk;
+  let ndk: NDK;
   let name = "";
-  let npub;
-  let privKey;
+  let npub: string;
+  let hexPubkey: string;
+  let privKey: string = "";
+  let keyArray: Uint8Array;
   let avatar = "";
   let showModal = false;
   let showAlertOnSave = false;
@@ -23,34 +35,50 @@
   let showAlertOnCopyNpub = false;
 
   let query = "";
-  let results = [];
-  let city = null;
-  let avatars = [];
+  let results: Array<{ name: string; country: string; population: number }> =
+    [];
+  let city: City | null = null;
+  let avatars: string[] = [];
 
   onMount(async () => {
     avatars = getAllAvatars();
     npub = $page.params.id;
     if (!npub) {
-      console.log("not found")
+      console.log("not found");
       goto("/");
     }
-    privKey = $page.state;
+    privKey = $page.state?.privKey;
     if (!privKey) {
-      console.log("session ends..")
+      console.log("session ends..");
       goto("/");
     }
-    const signer = new NDKPrivateKeySigner(privKey.toString());
+
+    if (typeof privKey === "string") {
+      keyArray = new Uint8Array(
+        privKey.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [],
+      );
+    }
+
+    const signer = new NDKPrivateKeySigner(keyArray);
     ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
     await ndk.connect();
 
     const profile = await getUserProfile(ndk, npub);
     name = profile.name || "";
-    city = profile.city || null;
-    query = `${city.cityName}, ${city.cityCountry}`;
-    avatar = profile.avatar || "";
+    if (profile.about) {
+      const [cityName, cityCountry] = profile.about.split(",");
+      city = cityName && cityCountry ? { cityName, cityCountry } : null;
+    }
+    query = city ? `${city.cityName}, ${city.cityCountry}` : "";
+    avatar = profile.image || "";
 
-    await ndk
-      .fetchEvents({ kinds: [1], authors: [npub] })
+    ndk
+      .fetchEvents({
+        kinds: [1],
+        authors: [hexPubkey],
+        since: getBODTimestamp(),
+        until: getEODTimestamp(),
+      })
       .then((events) => {
         if (events.size > 0) {
           hasAlreadySubmitted = true;
@@ -58,27 +86,37 @@
       });
   });
 
-  async function getUserProfile(ndk, npub) {
-    const user = ndk.getUser({
-      npub
-    });
-
-    return await user.fetchProfile();
+  function getBODTimestamp(): number {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return parseInt(today.getTime().toString().substring(0, 10));
   }
 
-  function selectAvatar(av) {
+  function getEODTimestamp(): number {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return parseInt(today.getTime().toString().substring(0, 10));
+  }
+
+  async function getUserProfile(
+    ndk: NDK,
+    npub: string,
+  ): Promise<NDKUserProfile> {
+    const user = ndk.getUser({
+      npub,
+    });
+    hexPubkey = user.pubkey;
+    await user.fetchProfile();
+    return user.profile || ({} as NDKUserProfile);
+  }
+
+  function selectAvatar(av: string): void {
     selectedAvatar = av;
     showModal = false;
     avatar = av;
   }
 
-  async function save() {
-    // todo: potentially an alert here
-    // if (hasAlreadySubmitted) {
-    //   showAlertOnAlreadySubmitted = true;
-    //   setTimeout(() => showAlertOnAlreadySubmitted = false, 3000);
-    //   return;
-    // }
+  async function save(): Promise<void> {
     if (city === null || name.length === 0) {
       showAlertOnSave = true;
       setTimeout(() => (showAlertOnSave = false), 1500);
@@ -89,42 +127,48 @@
     }
 
     try {
-        const avatar = `${selectedAvatar}`;
-        await setProfileData(ndk, name, city, avatar);
-        goto("/", {state: privKey});
-      } catch (error) {
-        console.error("Error saving profile data:", error);
-        alert("Failed to save profile data. Please try again.");
-      }
+      const avatar = `${selectedAvatar}`;
+      await setProfileData(ndk, name, city, avatar);
+      goto("/", { state: { privKey } });
+      return;
+    } catch (error) {
+      console.error("Error saving profile data:", error);
+      alert("Failed to save profile data. Please try again.");
     }
+  }
 
-    async function setProfileData(ndk, name, city, avatar) {
-      const metadataEvent = new NDKEvent(ndk);
-      metadataEvent.kind = 0;
-      const content = JSON.stringify({
-        name: name,
-        city: city,
-        avatar: avatar,
-      });
-      metadataEvent.content = content;
-      await metadataEvent.sign();
-      await metadataEvent.publish();
-    }
+  async function setProfileData(
+    ndk: NDK,
+    name: string,
+    city: City | null,
+    avatar: string,
+  ): Promise<void> {
+    const metadataEvent = new NDKEvent(ndk);
+    metadataEvent.kind = 0;
+    const content = JSON.stringify({
+      name: name,
+      about: city ? `${city.cityName},${city.cityCountry}` : "",
+      image: avatar,
+    });
+    metadataEvent.content = content;
+    await metadataEvent.sign();
+    await metadataEvent.publish();
+  }
 
-  function showAvatars() {
+  function showAvatars(): void {
     showModal = true;
   }
 
-  function logout() {
+  function logout(): void {
     localStorage.clear();
     goto("/");
   }
 
-  function goBack() {
-    goto("/", {state: privKey});
+  function goBack(): void {
+    goto("/", { state: { privKey } });
   }
 
-  function searchCities(query) {
+  function searchCities(query: string): void {
     const normalizedQuery = query.toLowerCase().trim();
     results = citiesData
       .filter((city) => city.name.toLowerCase().startsWith(normalizedQuery))
@@ -132,19 +176,20 @@
       .slice(0, 10);
   }
 
-  function handleInputCity(event) {
-    query = event.target.value;
+  function handleInputCity(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    query = target.value;
     city = null;
     searchCities(query);
   }
 
-  function selectCity(c) {
+  function selectCity(c: { name: string; country: string }): void {
     city = { cityName: c.name, cityCountry: c.country };
     query = `${c.name}, ${c.country}`;
     results = [];
   }
 
-  function copyNpub() {
+  function copyNpub(): void {
     navigator.clipboard
       .writeText(npub)
       .then(() => {
@@ -152,11 +197,19 @@
       })
       .catch((err) => {
         console.error("Failed to copy: ", err);
-      }).finally(() => setTimeout(() => showAlertOnCopyNpub = false, 1500));
+      })
+      .finally(() => setTimeout(() => (showAlertOnCopyNpub = false), 1500));
   }
 
-  function nsec(hexKey) {
-    return nip19.nsecEncode(hexKey);
+  function nsec(hexKey: string | Uint8Array): string {
+    if (typeof hexKey === "string") {
+      const bytes = new Uint8Array(
+        hexKey.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [],
+      );
+      return nip19.nsecEncode(bytes);
+    } else {
+      return nip19.nsecEncode(hexKey);
+    }
   }
 </script>
 
@@ -366,7 +419,9 @@
               {/if}
             </div>
           </div>
-          <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0 npub-container">
+          <div
+            class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0 npub-container"
+          >
             <dt class="text-sm font-medium leading-6 text-gray-300">
               Your public key
             </dt>
@@ -384,10 +439,18 @@
             </dd>
             <div class="left-10 flex items-center">
               {#if !showAlertOnCopyNpub}
-                <button on:click={copyNpub} class="copy-button text-sm text-gray-300"> copy </button>
+                <button
+                  on:click={copyNpub}
+                  class="copy-button text-sm text-gray-300"
+                >
+                  copy
+                </button>
               {/if}
               {#if showAlertOnCopyNpub}
-                <div class="text-sm text-blue-800 rounded-lg dark:text-blue-400" role="alert">
+                <div
+                  class="text-sm text-blue-800 rounded-lg dark:text-blue-400"
+                  role="alert"
+                >
                   <button class="font-medium">copied!</button>
                 </div>
               {/if}
@@ -408,9 +471,9 @@
               <p
                 class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-2 sm:mt-0 break-words"
               >
-              {#if privKey}
-                <PasswordDisplay password={nsec(privKey)} />
-              {/if}
+                {#if privKey}
+                  <PasswordDisplay password={nsec(privKey)} />
+                {/if}
               </p>
             </dd>
           </div>
