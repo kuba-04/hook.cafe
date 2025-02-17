@@ -1,19 +1,21 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { getRandomAvatar } from "./avatars";
-  import citiesData from "./cities.json";
+  import citiesData from "./cities_tz.json";
   import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
   import { nip19 } from "nostr-tools";
 
   interface City {
     cityName: string;
     cityCountry: string;
+    tz: string;
   }
 
   interface CityResult {
     name: string;
     country: string;
     population: number;
+    tz: string;
   }
 
   export let name = "";
@@ -129,7 +131,7 @@
   }
 
   function selectCity(c: CityResult): void {
-    city = { cityName: c.name, cityCountry: c.country };
+    city = { cityName: c.name, cityCountry: c.country, tz: c.tz };
     query = `${c.name}, ${c.country}`;
     results = [];
     dispatchCitySelection("change", { city });

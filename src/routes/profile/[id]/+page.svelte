@@ -11,13 +11,14 @@
   import { goto } from "$app/navigation";
   import { getAllAvatars } from "$lib/avatars";
   import PasswordDisplay from "$lib/PasswordDisplay.svelte";
-  import citiesData from "../../../lib/cities.json";
+  import citiesData from "../../../lib/cities_tz.json";
   import { page } from "$app/stores";
   import { nip19 } from "nostr-tools";
 
   interface City {
     cityName: string;
     cityCountry: string;
+    tz: string;
   }
 
   let selectedAvatar = "";
@@ -35,8 +36,12 @@
   let showAlertOnCopyNpub = false;
 
   let query = "";
-  let results: Array<{ name: string; country: string; population: number }> =
-    [];
+  let results: Array<{
+    name: string;
+    country: string;
+    population: number;
+    tz: string;
+  }> = [];
   let city: City | null = null;
   let avatars: string[] = [];
 
@@ -66,10 +71,11 @@
     const profile = await getUserProfile(ndk, npub);
     name = profile.name || "";
     if (profile.about) {
-      const [cityName, cityCountry] = profile.about.split(",");
-      city = cityName && cityCountry ? { cityName, cityCountry } : null;
+      const [cityName, cityCountry, tz] = profile.about.split(",");
+      city =
+        cityName && cityCountry && tz ? { cityName, cityCountry, tz } : null;
     }
-    query = city ? `${city.cityName}, ${city.cityCountry}` : "";
+    query = city ? `${city.cityName}, ${city.cityCountry}, ${city.tz}` : "";
     avatar = profile.image || "";
 
     ndk
@@ -183,8 +189,12 @@
     searchCities(query);
   }
 
-  function selectCity(c: { name: string; country: string }): void {
-    city = { cityName: c.name, cityCountry: c.country };
+  async function selectCity(c: {
+    name: string;
+    country: string;
+    tz: string;
+  }): Promise<void> {
+    city = { cityName: c.name, cityCountry: c.country, tz: c.tz };
     query = `${c.name}, ${c.country}`;
     results = [];
   }

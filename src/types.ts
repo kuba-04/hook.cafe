@@ -3,6 +3,7 @@ import type { NDKEvent, NDKUser, NDKUserProfile } from "@nostr-dev-kit/ndk";
 export interface City {
     cityName: string;
     cityCountry: string;
+    tz: string;
 }
 
 export interface Author extends NDKUser {
