@@ -153,7 +153,7 @@
     metadataEvent.kind = 0;
     const content = JSON.stringify({
       name: name,
-      about: city ? `${city.cityName},${city.cityCountry}` : "",
+      about: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
       image: avatar,
     });
     metadataEvent.content = content;

@@ -29,14 +29,17 @@
   import InspirationModal from "$lib/InspirationModal.svelte";
   import Tooltip from "$lib/Tooltip.svelte";
   import SomeoneSelectedMeAlert from "$lib/alerts/SomeoneSelectedMeAlert.svelte";
+  import SomeoneRejectedMeAlert from "$lib/alerts/SomeoneRejectedMeAlert.svelte";
   import type {
     City,
     Author,
     ParsedContent,
     MessageContent,
     Message,
+    CachedReaction,
   } from "../types";
   import moment from "moment-timezone";
+  import { ReactionService } from "$lib/services/ReactionService";
 
   function getBODTimestamp(tz: string): number {
     const bod = moment.tz(tz).startOf("day");
@@ -101,6 +104,8 @@
 
   let showYouGotSelected = false;
   let myFollowEvent: NDKEvent | null = null;
+  let showRejectionAlert = false;
+  let rejectionEvent: NDKEvent | null = null;
 
   let isImageCartoon = true;
 
@@ -177,23 +182,26 @@
       image: avatar,
     });
     metadataEvent.content = content;
-
+    await metadataEvent.sign();
     try {
       setTimeout(async () => {
-        await metadataEvent.sign();
         await metadataEvent.publish();
       }, 200);
     } catch (error) {
       setTimeout(async () => {
         await metadataEvent.publish();
-      }, 500);
+      }, 1000);
     }
   }
 
   function getCityFromProfile(profile: NDKUserProfile): City | null {
     if (!profile.about) return null;
     const [cityName, cityCountry, tz] = profile.about.split(",");
-    return cityName && cityCountry && tz ? { cityName, cityCountry, tz } : null;
+    if (!cityName || !cityCountry || !tz) {
+      console.log("Missing city data parts");
+      return null;
+    }
+    return { cityName, cityCountry, tz };
   }
 
   async function handleLogin(event: CustomEvent): Promise<void> {
@@ -271,54 +279,48 @@
 
   onMount(async () => {
     let preloadKey: string | undefined;
-    if (
-      $page &&
-      $page.state?.privKey &&
-      typeof $page.state?.privKey === "string"
-    ) {
+    if ($page?.state?.privKey && typeof $page.state.privKey === "string") {
       preloadKey = $page.state.privKey;
     } else {
       return;
     }
-    if (Object.keys(preloadKey || {}).length === 0) {
+
+    if (!preloadKey) {
       return;
-    } else {
-      privKey = preloadKey;
     }
+
+    privKey = preloadKey;
 
     if (privKey) {
       signer = new NDKPrivateKeySigner(privKey);
       isAuthenticated = true;
-    } else {
-      isAuthenticated = false;
-      showModal = true;
-      return;
-    }
-    selectedAuthor = localStorage.getItem("selected") || "";
 
-    ndk = new NDK({
-      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
-      signer: signer,
-    });
+      rejectedEvents =
+        new Set(
+          JSON.parse(
+            localStorage.getItem("rejectedEvents") || "",
+          )?.rejectedEvents,
+        ) || [];
 
-    try {
-      await ndk.connect().then(() => console.log("connected"));
-    } catch (e) {
-      console.log("unable to connect to relay");
-    }
-    pubkey = (await signer.user()).pubkey;
-    await loadOwnEvents();
-    const profile = await getUserProfile(ndk, pubkey);
-    signerProfile = profile;
-    avatar = profile?.image || "";
-    name = profile?.name || "";
-    city = getCityFromProfile(profile);
+      ndk = new NDK({
+        explicitRelayUrls: [env.PUBLIC_RELAY_URL],
+        signer: signer,
+      });
+      await ndk.connect();
 
-    console.log("madeDecision: ", madeDecision());
-    if (madeDecision()) {
-      await initConnectedMessages();
-    } else {
-      await initMessages();
+      pubkey = (await signer.user()).pubkey;
+      const profile = await getUserProfile(ndk, pubkey);
+      signerProfile = profile;
+      name = profile?.name || "";
+      city = getCityFromProfile(profile);
+      avatar = profile?.image || "";
+
+      await loadOwnEvents();
+      if (madeDecision()) {
+        await initConnectedMessages();
+      } else {
+        await initMessages();
+      }
     }
   });
 
@@ -350,15 +352,21 @@
         tz: event.tags?.find((t) => t[0] === "city")?.[3] || "",
       };
 
-      if (isTheSameCity(city, eventCity) && isRootNote(event)) {
-        await addMessage(event);
-      }
+      // if (isTheSameCity(city, eventCity) && isRootNote(event)) {
+      //   await addMessage(event);
+      // }
 
-      if (isTheSameCity(city, eventCity) && selectedAuthor.length === 0) {
+      if (
+        isTheSameCity(city, eventCity) &&
+        isRootNote(event) &&
+        !madeDecision()
+      ) {
         await addMessage(event);
       }
       await fetchMyFollower(event);
-      await handleReactions(event);
+      if (submitted != null) {
+        await handleReactions(event);
+      }
     });
 
     await fetchMessages();
@@ -459,9 +467,6 @@
       KIND_0_FILTER,
     ]);
 
-    console.log("initConnectedMessages: ", notes);
-    console.log("initConnectedMessages pre sub: ", messages);
-
     subscription.on("event", async (event: NDKEvent) => {
       const eventCity: City = {
         cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
@@ -482,9 +487,10 @@
       }
 
       await fetchMyFollower(event);
-      await handleReactions(event);
+      if (submitted != null) {
+        await handleReactions(event);
+      }
     });
-    console.log("initConnectedMessages post sub: ", messages);
   }
 
   async function fetchNestedSelect(key: string): Promise<void> {
@@ -521,6 +527,12 @@
 
   async function addMessage(event: NDKEvent): Promise<void> {
     if (!event) return;
+
+    // Check if this message should be visible based on reaction history
+    // if (!ReactionService.shouldShowUser(event.pubkey, pubkey)) {
+    //   return;
+    // }
+
     const eventPubkey = event.pubkey;
 
     const idExists = messages.some((m) => m.event.id === event.id);
@@ -610,12 +622,10 @@
   function parseEventContent(message: Message): {
     parsedContent: ParsedContent;
   } {
-    console.log("parseEventContent: ", message);
     const getTag = (name: string): string => {
       const tag = message.event.tags?.find((t) => t[0] === name);
       return tag ? tag[1] : "";
     };
-    console.log("parseEventContent tag topic1: ", getTag("topic1"));
 
     return {
       parsedContent: {
@@ -798,70 +808,126 @@
   }
 
   async function handleReactions(event: NDKEvent): Promise<void> {
-    if (event.kind === 7) {
-      // console.log("handle reaction: ", event);
-      if (event.tags.find((t) => t[0] === "p" && t[1] === pubkey)) {
-        console.log(
-          "someone reacted to my event ",
-          event.pubkey,
-          event.content,
-        );
-        const targetEventPubkey = event.pubkey;
-        if (event.content === "+") {
-          eventsInGroup.add(targetEventPubkey);
-          eventsInGroup.add(pubkey);
+    if (
+      event.kind === 7 &&
+      event.tags.find((t) => t[0] === "ownerCity")?.[1] ===
+        `${city?.cityName},${city?.cityCountry},${city?.tz}`
+    ) {
+      if (!city) {
+        console.error("City is null, cannot handle reaction");
+        return;
+      }
+
+      const reaction: CachedReaction = {
+        id: event.id,
+        from: event.pubkey,
+        to: event.tags.find((t) => t[0] === "p")?.[1] || "",
+        content: event.content,
+        timestamp: event.created_at || Date.now(),
+      };
+
+      // ReactionService.addReaction(reaction);
+
+      // Handle positive reactions
+      if (event.content === "+") {
+        if (reaction.to === pubkey) {
+          // someone reacted to my message
+          eventsInGroup.add(reaction.from);
+          eventsInGroup.add(reaction.to);
           eventsInGroup = eventsInGroup;
-        } else if (event.content === "-") {
-          // TODO: show alert
-          rejectedEvents.add(targetEventPubkey);
-          rejectedEvents = rejectedEvents;
-          selectedAuthor = "";
-          localStorage.removeItem("selected");
-          await fetchMessages();
+        } else if (reaction.from === pubkey) {
+          eventsInGroup.add(reaction.to);
+          eventsInGroup = eventsInGroup;
+        } else if (eventsInGroup.has(reaction.to)) {
+          eventsInGroup.add(reaction.from);
+          eventsInGroup = eventsInGroup;
         }
-      } else if (event.pubkey === pubkey && event.tagValue("p")) {
-        console.log("handle reaction to my own event: ", event);
-        if (event.content === "+") {
-          eventsInGroup.add(event.tagValue("p"));
-          eventsInGroup = eventsInGroup;
-        } else if (event.content === "-") {
-          rejectedEvents.add(event.tagValue("p"));
-          rejectedEvents = rejectedEvents;
+        // Handle negative reactions
+      } else if (event.content === "-") {
+        rejectionEvent = event;
+        if (reaction.to === pubkey && !rejectedEvents.has(event.pubkey)) {
+          showRejectionAlert = true;
+          rejectedEvents.add(event.pubkey);
+          setTimeout(() => {
+            showRejectionAlert = false;
+          }, 5000);
           selectedAuthor = "";
-          localStorage.removeItem("selected");
+          await refreshCityMessages();
+        } else if (reaction.to === selectedAuthor) {
+          rejectedEvents.add(event.pubkey);
+          messages = messages.filter(
+            (msg) => msg.event.pubkey !== event.pubkey,
+          );
+        } else if (reaction.from === pubkey) {
+          await ndk
+            .fetchEvents({
+              kinds: [7],
+              authors: [reaction.to],
+              since: getBODTimestamp(city?.tz || ""),
+              until: getEODTimestamp(city?.tz || ""),
+            })
+            .then((events) => {
+              const positiveEvents = Array.from(events).filter(
+                (e) => e.content === "+",
+              );
+              positiveEvents.forEach((e) => {
+                rejectedEvents.add(e.pubkey);
+                rejectedEvents.add(reaction.to);
+
+                const beforeFilterLength = messages.length;
+                messages = messages.filter(
+                  (msg) =>
+                    msg.event.pubkey !== e.pubkey &&
+                    msg.event.pubkey !== e.tagValue("p"),
+                );
+              });
+            })
+            .catch((error) => {
+              console.error(error);
+            });
+        } else {
+          // Otherwise just filter current messages
+          // messages = messages.filter(
+          //   (msg) =>
+          //     ReactionService.shouldShowUser(msg.event.pubkey, pubkey) ||
+          //     ReactionService.shouldShowUser(msg.event.pubkey, selectedAuthor),
+          // );
         }
       }
-      // } else {
-      //   console.log("handle reaction not to mine: ", event);
-      //   const reactorPubkey = event.pubkey;
-      //   const targetPubkey = event.tags.find((t) => t[0] === "p")?.[1];
+      localStorage.setItem("rejectedEvents", JSON.stringify(rejectedEvents));
+    }
+  }
 
-      //   if (event.content === "+" && targetPubkey) {
-      //     const isInMessages = messages.some(
-      //       (m) =>
-      //         m.event.pubkey === reactorPubkey ||
-      //         m.event.pubkey === targetPubkey,
-      //     );
+  async function refreshCityMessages(): Promise<void> {
+    if (!city) {
+      console.error("City is null, cannot refresh messages");
+      return;
+    }
 
-      //     if (
-      //       isInMessages &&
-      //       (madeDecision() ||
-      //         (!madeDecision() &&
-      //           [pubkey, selectedAuthor].includes(targetPubkey)) ||
-      //         [pubkey, selectedAuthor].includes(reactorPubkey))
-      //     ) {
-      //       eventsInGroup.add(reactorPubkey);
-      //       eventsInGroup.add(targetPubkey);
-      //       eventsInGroup = eventsInGroup;
-      //     }
-      //   } else if (event.content === "-" && targetPubkey) {
-      //     console.log("I rejected ", targetPubkey);
-      //     rejectedEvents.add(targetPubkey);
-      //     rejectedEvents = rejectedEvents;
-      //     selectedAuthor = "";
-      //     localStorage.removeItem("selected");
-      //   }
-      // }
+    // Clear current messages and profiles
+    messages = [];
+    userProfiles.clear();
+
+    // Fetch all messages from the city
+    const events = await ndk.fetchEvents([
+      {
+        kinds: [1],
+        since: getBODTimestamp(city?.tz || ""),
+        until: getEODTimestamp(city?.tz || ""),
+      },
+    ]);
+
+    // Add each valid message
+    for (const event of events) {
+      const eventCity: City = {
+        cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
+        cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
+        tz: event.tags?.find((t) => t[0] === "city")?.[3] || "",
+      };
+
+      if (isRootNote(event) && isTheSameCity(city, eventCity)) {
+        await addMessage(event);
+      }
     }
   }
 </script>
@@ -1152,11 +1218,14 @@
                 }}
               />
             {/if}
+            {#if showRejectionAlert}
+              <SomeoneRejectedMeAlert eventData={rejectionEvent} />
+            {/if}
             <ul role="list" class="divide-y divide-gray-100 mt-5">
               {#each messages.filter((m) => !rejectedEvents.has(m.event.pubkey)) as message (message.event.id)}
                 <button
                   on:click={() => select(message.event)}
-                  class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer"
+                  class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer w-full"
                 >
                   <div class="flex min-w-0 gap-x-7">
                     <div class="flex min-w-10 items-center relative">
