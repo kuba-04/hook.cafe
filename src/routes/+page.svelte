@@ -39,7 +39,6 @@
     CachedReaction,
   } from "../types";
   import moment from "moment-timezone";
-  import { ReactionService } from "$lib/services/ReactionService";
 
   function getBODTimestamp(tz: string): number {
     const bod = moment.tz(tz).startOf("day");
@@ -528,13 +527,7 @@
   async function addMessage(event: NDKEvent): Promise<void> {
     if (!event) return;
 
-    // Check if this message should be visible based on reaction history
-    // if (!ReactionService.shouldShowUser(event.pubkey, pubkey)) {
-    //   return;
-    // }
-
     const eventPubkey = event.pubkey;
-
     const idExists = messages.some((m) => m.event.id === event.id);
     const pubkeyExists = messages.some((m) => m.event.pubkey === eventPubkey);
 
@@ -826,8 +819,6 @@
         timestamp: event.created_at || Date.now(),
       };
 
-      // ReactionService.addReaction(reaction);
-
       // Handle positive reactions
       if (event.content === "+") {
         if (reaction.to === pubkey) {
@@ -885,13 +876,6 @@
             .catch((error) => {
               console.error(error);
             });
-        } else {
-          // Otherwise just filter current messages
-          // messages = messages.filter(
-          //   (msg) =>
-          //     ReactionService.shouldShowUser(msg.event.pubkey, pubkey) ||
-          //     ReactionService.shouldShowUser(msg.event.pubkey, selectedAuthor),
-          // );
         }
       }
       localStorage.setItem("rejectedEvents", JSON.stringify(rejectedEvents));
