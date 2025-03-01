@@ -48,15 +48,19 @@ jobs:
           docker stop test-container
           docker rm test-container
 
+      # The following steps only run on push to master, not on pull requests
       - name: Login to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
-      - name: Build Docker image
+      - name: Build Docker image for registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         run: |
           docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }} .
           docker tag ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }} ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:latest
 
       - name: Push Docker image to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         run: |
           docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }}
           docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:latest
