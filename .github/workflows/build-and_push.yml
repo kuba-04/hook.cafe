@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build-and-push:
@@ -12,6 +15,38 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      # Verify project builds correctly
+      - name: Verify project build
+        run: |
+          npm ci
+          npm run build
+          if [ ! -d "build" ]; then
+            echo "Build failed: build directory not found"
+            exit 1
+          fi
+
+      # Test Docker image build
+      - name: Test Docker image build
+        run: docker build -t test-image .
+
+      # Verify container starts properly
+      - name: Verify container starts
+        run: |
+          docker run --name test-container -d test-image
+          # Wait for container to initialize
+          sleep 10
+          # Check if container is running
+          CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' test-container)
+          if [ "$CONTAINER_STATUS" != "running" ]; then
+            echo "Container failed to start properly"
+            docker logs test-container
+            exit 1
+          fi
+          echo "Container started successfully"
+          # Clean up
+          docker stop test-container
+          docker rm test-container
 
       - name: Login to GitHub Container Registry
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
