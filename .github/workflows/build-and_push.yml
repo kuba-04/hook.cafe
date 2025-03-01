@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build-and-push:
@@ -13,15 +16,58 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      # Verify project builds correctly
+      - name: Verify project build
+        run: |
+          # Check if package-lock.json exists
+          if [ -f "package-lock.json" ]; then
+            echo "Using npm ci with existing package-lock.json"
+            npm ci
+          else
+            echo "No package-lock.json found, using npm install instead"
+            npm install
+          fi
+          npm run build
+          if [ ! -d "build" ]; then
+            echo "Build failed: build directory not found"
+            exit 1
+          fi
+
+      # Test Docker image build
+      - name: Test Docker image build
+        run: docker build -t test-image .
+
+      # Verify container starts properly
+      - name: Verify container starts
+        run: |
+          docker run --name test-container -d test-image
+          # Wait for container to initialize
+          sleep 10
+          # Check if container is running
+          CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' test-container)
+          if [ "$CONTAINER_STATUS" != "running" ]; then
+            echo "Container failed to start properly"
+            docker logs test-container
+            exit 1
+          fi
+          echo "Container started successfully"
+          # Clean up
+          docker stop test-container
+          docker rm test-container
+
+      # The following steps only run on push to master, not on pull requests
       - name: Login to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
 
-      - name: Build Docker image
+      - name: Build Docker image for registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         run: |
           docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }} .
           docker tag ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }} ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:latest
 
       - name: Push Docker image to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         run: |
           docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:${{ github.sha }}
           docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/hookcafe:latest

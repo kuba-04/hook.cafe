@@ -3,6 +3,7 @@ import type { NDKEvent, NDKUser, NDKUserProfile } from "@nostr-dev-kit/ndk";
 export interface City {
     cityName: string;
     cityCountry: string;
+    tz: string;
 }
 
 export interface Author extends NDKUser {
@@ -45,4 +46,16 @@ export interface MessageContent {
 
 export interface Avatar {
     path: string;
+}
+
+export interface CachedReaction {
+    id: string;
+    from: string;      // pubkey of who reacted
+    to: string;        // pubkey of who was reacted to
+    content: string;   // "+" or "-"
+    timestamp: number; // when the reaction happened
+}
+
+export interface ReactionCache {
+    [cityKey: string]: CachedReaction[];
 } 
