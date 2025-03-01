@@ -19,7 +19,14 @@ jobs:
       # Verify project builds correctly
       - name: Verify project build
         run: |
-          npm ci
+          # Check if package-lock.json exists
+          if [ -f "package-lock.json" ]; then
+            echo "Using npm ci with existing package-lock.json"
+            npm ci
+          else
+            echo "No package-lock.json found, using npm install instead"
+            npm install
+          fi
           npm run build
           if [ ! -d "build" ]; then
             echo "Build failed: build directory not found"
