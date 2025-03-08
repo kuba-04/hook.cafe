@@ -143,7 +143,9 @@
 
     pubkey = (await signer.user()).pubkey;
 
-    await ndk.connect();
+    await ndk
+      .connect()
+      .then(() => console.log("Connected to NDK successfully"));
     await setProfileData(ndk, name, city, avatar);
 
     if (isMessageValid && name.length > 0) {
@@ -297,7 +299,7 @@
       rejectedEvents =
         new Set(
           JSON.parse(
-            localStorage.getItem("rejectedEvents") || "",
+            localStorage.getItem("rejectedEvents") || '{"rejectedEvents": []}',
           )?.rejectedEvents,
         ) || [];
 
@@ -735,6 +737,9 @@
       ["priceTo", message.priceTo || ""],
     ];
 
+    console.log("Sending event...: ", ndkEvent);
+
+    await ndkEvent.sign();
     await ndkEvent.publish();
     return ndkEvent;
   }
