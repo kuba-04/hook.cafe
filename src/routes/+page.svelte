@@ -149,9 +149,7 @@
     await setProfileData(ndk, name, city, avatar);
 
     if (isMessageValid && name.length > 0) {
-      setTimeout(async () => {
-        await handleSubmit();
-      }, 200);
+      await handleSubmit();
     }
 
     await initMessages();
@@ -185,9 +183,7 @@
     metadataEvent.content = content;
     await metadataEvent.sign();
     try {
-      setTimeout(async () => {
-        await metadataEvent.publish();
-      }, 200);
+      await metadataEvent.publish();
     } catch (error) {
       setTimeout(async () => {
         await metadataEvent.publish();
@@ -605,13 +601,11 @@
       ["p", selectedAuthor],
     ];
     replyEvent.content = ownEvent?.event.content || "";
-    setTimeout(async () => {
-      await replyEvent.sign();
-      await replyEvent.publish();
-      messages = [];
-      userProfiles.clear();
-      await initConnectedMessages();
-    }, 300);
+    await replyEvent.sign();
+    await replyEvent.publish();
+    messages = [];
+    userProfiles.clear();
+    await initConnectedMessages();
   }
 
   function parseEventContent(message: Message): {
