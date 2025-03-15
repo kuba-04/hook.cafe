@@ -1010,54 +1010,62 @@
               <p class="text-md text-gray-500">
                 Only 4 words to encourage people to join
               </p>
-              <div class="mt-4 flex max-w-md gap-x-4">
-                <label for="word-1" class="sr-only">Word 1</label>
-                <input
-                  bind:value={inputWord1}
-                  on:change={onChangeWord1}
-                  id="word-1"
-                  name="text"
-                  type="text"
-                  required
-                  class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
-                  placeholder="Word 1"
-                />
+              <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-md">
+                <div>
+                  <label for="word-1" class="sr-only">Word 1</label>
+                  <input
+                    bind:value={inputWord1}
+                    on:change={onChangeWord1}
+                    id="word-1"
+                    name="text"
+                    type="text"
+                    required
+                    class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
+                    placeholder="Word 1"
+                  />
+                </div>
 
-                <label for="word-2" class="sr-only">Word 2</label>
-                <input
-                  bind:value={inputWord2}
-                  on:change={onChangeWord2}
-                  id="word-2"
-                  name="text"
-                  type="text"
-                  required
-                  class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
-                  placeholder="Word 2"
-                />
+                <div>
+                  <label for="word-2" class="sr-only">Word 2</label>
+                  <input
+                    bind:value={inputWord2}
+                    on:change={onChangeWord2}
+                    id="word-2"
+                    name="text"
+                    type="text"
+                    required
+                    class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
+                    placeholder="Word 2"
+                  />
+                </div>
 
-                <label for="word-3" class="sr-only">Word 3</label>
-                <input
-                  bind:value={inputWord3}
-                  on:change={onChangeWord3}
-                  id="word-3"
-                  name="text"
-                  type="text"
-                  required
-                  class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
-                  placeholder="Word 3"
-                />
+                <div>
+                  <label for="word-3" class="sr-only">Word 3</label>
+                  <input
+                    bind:value={inputWord3}
+                    on:change={onChangeWord3}
+                    id="word-3"
+                    name="text"
+                    type="text"
+                    required
+                    class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
+                    placeholder="Word 3"
+                  />
+                </div>
 
-                <label for="word-4" class="sr-only">Word 4</label>
-                <input
-                  bind:value={inputWord4}
-                  on:change={onChangeWord4}
-                  id="word-4"
-                  name="text"
-                  type="text"
-                  required
-                  class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
-                  placeholder="Word 4"
-                />
+                <div>
+                  <label for="word-4" class="sr-only">Word 4</label>
+                  <input
+                    bind:value={inputWord4}
+                    on:change={onChangeWord4}
+                    id="word-4"
+                    name="text"
+                    type="text"
+                    required
+                    class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
+                    placeholder="Word 4"
+                  />
+                </div>
               </div>
               <p class="mt-4 text-lg leading-8 text-gray-300">
                 Where can you meet?
@@ -1230,14 +1238,30 @@
                       {/if}
                     </div>
                     <div class="grid grid-cols-1 gap-0 content-center">
-                      <p
-                        class="text-sm truncate font-semibold text-white flex justify-start"
+                      <div
+                        class="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-2 text-sm font-semibold text-white"
                       >
-                        {parseEventContent(message).parsedContent.word1}
-                        {parseEventContent(message).parsedContent.word2}
-                        {parseEventContent(message).parsedContent.word3}
-                        {parseEventContent(message).parsedContent.word4}
-                      </p>
+                        <span
+                          class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
+                        >
+                          {parseEventContent(message).parsedContent.word1}
+                        </span>
+                        <span
+                          class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
+                        >
+                          {parseEventContent(message).parsedContent.word2}
+                        </span>
+                        <span
+                          class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
+                        >
+                          {parseEventContent(message).parsedContent.word3}
+                        </span>
+                        <span
+                          class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
+                        >
+                          {parseEventContent(message).parsedContent.word4}
+                        </span>
+                      </div>
                       {#if !message.author || !message.author.name}
                         <p
                           class="mt-1 truncate text-xs flex justify-start text-gray-500"
