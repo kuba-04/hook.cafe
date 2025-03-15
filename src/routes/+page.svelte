@@ -162,8 +162,18 @@
       .then(() => console.log("Connected to NDK successfully"));
     await setProfileData(ndk, name, city, avatar);
 
-    if (isMessageValid && name.length > 0) {
-      await handleSubmit();
+    // Check if the message is valid and submit it automatically
+    validateMessage();
+    if (isMessageValid && isAuthenticated && name.length > 0) {
+      try {
+        setTimeout(async () => {
+          await handleSubmit();
+          // Hide the form after successful submission
+          submitted = await sendMessage(message);
+        }, 1000);
+      } catch (error) {
+        console.error("Error submitting message after registration:", error);
+      }
     }
 
     await initMessages();
@@ -725,11 +735,11 @@
 
     try {
       await sendMessage(message);
-    } catch (error) {
-      console.log(error);
-    } finally {
+      // Show success alert only after successful submission
       showAlertOnSubmittingSuccess = true;
-      setTimeout(() => (showAlertOnSubmittingSuccess = false), 5000);
+      setTimeout(() => (showAlertOnSubmittingSuccess = false), 3000);
+    } catch (error) {
+      console.error("Error submitting message:", error);
     }
   }
 
@@ -1214,9 +1224,13 @@
 
           <!-- alert -->
           {#if showAlertOnSubmittingSuccess}
-            <OnSubmittingSuccessAlert
-              on:showAlert={() => (showAlertOnSubmittingSuccess = false)}
-            />
+            <div class="fixed inset-0 flex items-center justify-center z-50">
+              <div class="max-w-sm">
+                <OnSubmittingSuccessAlert
+                  on:showAlert={() => (showAlertOnSubmittingSuccess = false)}
+                />
+              </div>
+            </div>
           {/if}
 
           {#await initConnectedMessages}
