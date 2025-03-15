@@ -877,7 +877,7 @@
           rejectedEvents.add(event.pubkey);
           setTimeout(() => {
             showRejectionAlert = false;
-          }, 5000);
+          }, 3000);
           selectedAuthor = "";
           await refreshCityMessages();
         } else if (reaction.to === selectedAuthor) {
@@ -966,9 +966,98 @@
   <div
     class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex justify-center px-4 sm:px-6 lg:px-8"
   >
-    <!-- alert -->
+    <!-- Global alerts that overlay the content -->
+    {#if showAlertOnPageReload || showAlertOnSubmittingSuccess || showAlertOnSubmittingInvalid || showAlertOnAlreadySubmitted || showAlertOnSelectUnsubmitted || showAlertOnSelectingSelf || showYouGotSelected || showRejectionAlert}
+      <!-- Backdrop with blur effect -->
+      <div
+        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40"
+      ></div>
+    {/if}
+
     {#if showAlertOnPageReload}
-      <OnPageLoadAlert />
+      <div class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="max-w-sm">
+          <OnPageLoadAlert />
+        </div>
+      </div>
+    {/if}
+
+    {#if showAlertOnSubmittingSuccess}
+      <div class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="max-w-sm">
+          <OnSubmittingSuccessAlert
+            on:showAlert={() => (showAlertOnSubmittingSuccess = false)}
+          />
+        </div>
+      </div>
+    {/if}
+
+    {#if showAlertOnSubmittingInvalid}
+      <div class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="max-w-sm">
+          <OnSubmitInvalidAlert />
+        </div>
+      </div>
+    {/if}
+
+    {#if showAlertOnAlreadySubmitted}
+      <div class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="max-w-sm">
+          <OnAlreadySubmittedAlert />
+        </div>
+      </div>
+    {/if}
+
+    {#if showAlertOnSelectUnsubmitted}
+      <div class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="max-w-sm">
+          <OnSelectUnsubmittedAlert />
+        </div>
+      </div>
+    {/if}
+
+    {#if showAlertOnSelectingSelf}
+      <div class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="max-w-sm">
+          <OnSelectingSelfAlert />
+        </div>
+      </div>
+    {/if}
+
+    {#if showYouGotSelected}
+      <div class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="max-w-sm">
+          <div class="text-lg font-semibold leading-6 text-white mb-2">
+            Someone selected you!
+          </div>
+          <SomeoneSelectedMeAlert
+            eventData={myFollowEvent}
+            on:reaction={async (event) => {
+              const { reactionData } = event.detail;
+              try {
+                const reactionEvent = new NDKEvent(ndk);
+                reactionEvent.kind = reactionData.kind;
+                reactionEvent.content = reactionData.content;
+                reactionEvent.tags = reactionData.tags;
+                await reactionEvent.sign();
+                await reactionEvent.publish();
+              } catch (error) {
+                console.error("Error publishing reaction:", error);
+              } finally {
+                showYouGotSelected = false;
+              }
+            }}
+          />
+        </div>
+      </div>
+    {/if}
+
+    {#if showRejectionAlert}
+      <div class="fixed inset-0 flex items-center justify-center z-50">
+        <div class="max-w-sm">
+          <SomeoneRejectedMeAlert eventData={rejectionEvent} />
+        </div>
+      </div>
     {/if}
 
     <div class="w-full max-w-4xl">
@@ -1177,15 +1266,6 @@
                   >
                 </div>
 
-                <!-- alert -->
-                {#if showAlertOnSubmittingInvalid}
-                  <OnSubmitInvalidAlert />
-                {/if}
-                <!-- alert -->
-                {#if showAlertOnAlreadySubmitted}
-                  <OnAlreadySubmittedAlert />
-                {/if}
-
                 <div>
                   {#if isAuthenticated}
                     <button
@@ -1222,17 +1302,6 @@
             </div>
           {/if}
 
-          <!-- alert -->
-          {#if showAlertOnSubmittingSuccess}
-            <div class="fixed inset-0 flex items-center justify-center z-50">
-              <div class="max-w-sm">
-                <OnSubmittingSuccessAlert
-                  on:showAlert={() => (showAlertOnSubmittingSuccess = false)}
-                />
-              </div>
-            </div>
-          {/if}
-
           {#await initConnectedMessages}
             <p>Loading...</p>
             <!-- Loader displayed while waiting -->
@@ -1241,48 +1310,6 @@
             <dl
               class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2"
             >
-              <!-- alert -->
-              {#if showAlertOnSelectUnsubmitted}
-                <OnSelectUnsubmittedAlert />
-              {/if}
-              <!-- alert -->
-              {#if showAlertOnSelectingSelf}
-                <OnSelectingSelfAlert />
-              {/if}
-              {#if showYouGotSelected}
-                <div class="text-lg font-semibold leading-6 text-white">
-                  Someone selected you!
-                </div>
-                <SomeoneSelectedMeAlert
-                  eventData={myFollowEvent}
-                  on:reaction={async (event) => {
-                    const { reactionData } = event.detail;
-                    try {
-                      const reactionEvent = new NDKEvent(ndk);
-                      reactionEvent.kind = reactionData.kind;
-                      reactionEvent.content = reactionData.content;
-                      reactionEvent.tags = reactionData.tags;
-                      await reactionEvent.sign();
-                      await reactionEvent.publish();
-
-                      // Add both users to the group if it's a positive reaction
-                      // const followerPubkey = myFollowEvent?.pubkey || null;
-                      // if (followerPubkey && reactionData.content === "+") {
-                      //   eventsInGroup.add(pubkey); // Add myself
-                      //   eventsInGroup.add(followerPubkey); // Add the follower
-                      //   eventsInGroup = eventsInGroup;
-                      // }
-                    } catch (error) {
-                      console.error("Error publishing reaction:", error);
-                    } finally {
-                      showYouGotSelected = false;
-                    }
-                  }}
-                />
-              {/if}
-              {#if showRejectionAlert}
-                <SomeoneRejectedMeAlert eventData={rejectionEvent} />
-              {/if}
               <ul role="list" class="divide-y divide-gray-100 mt-5">
                 {#each messages.filter((m) => !rejectedEvents.has(m.event.pubkey)) as message (message.event.id)}
                   <button
