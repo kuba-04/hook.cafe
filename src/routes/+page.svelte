@@ -76,6 +76,19 @@
   let chatOpen: boolean | null = null;
   let loadingComplete: boolean;
   let isInitialLoading = true;
+  let randomLoadingImage = "";
+
+  const loadingImages = [
+    "despina-galani-Ucrx2SMYtqk-unsplash.jpg",
+    "despina-galani-w3qclFnDoos-unsplash.jpg",
+    "mick-haupt-IpIACJ76yU0-unsplash.jpg",
+    "milada-vigerova-mDa8FAg782c-unsplash.jpg",
+  ];
+
+  function getRandomLoadingImage(): string {
+    const randomIndex = Math.floor(Math.random() * loadingImages.length);
+    return `/images/loading/${loadingImages[randomIndex]}`;
+  }
 
   // price slider
   let minValue: number;
@@ -276,6 +289,8 @@
   }
 
   onMount(async () => {
+    randomLoadingImage = getRandomLoadingImage();
+
     let preloadKey: string | undefined;
     if ($page?.state?.privKey && typeof $page.state.privKey === "string") {
       preloadKey = $page.state.privKey;
@@ -998,17 +1013,30 @@
       </div>
 
       {#if isInitialLoading}
-        <!-- Loading state -->
-        <div class="flex justify-center items-center h-96">
+        <!-- Loading state with random inspiration image -->
+        <div class="flex flex-col justify-center items-center h-96 mt-8">
           <div class="text-center">
             <div
-              class="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-teal-400 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"
-              role="status"
+              class="my-20 relative overflow-hidden rounded-lg shadow-lg max-w-md mx-auto"
             >
-              <span
-                class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]"
-                >Loading...</span
+              <img
+                src={randomLoadingImage}
+                alt="Inspiration"
+                class="w-full object-cover"
+              />
+              <div
+                class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center"
               >
+                <div
+                  class="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-teal-400 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"
+                  role="status"
+                >
+                  <span
+                    class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]"
+                    >Loading...</span
+                  >
+                </div>
+              </div>
             </div>
             <p class="mt-4 text-lg text-gray-300">Getting ready...</p>
           </div>
