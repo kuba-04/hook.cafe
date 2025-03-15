@@ -31,7 +31,7 @@
         on:mouseleave={toggleImages}
     >
         <h1 class="text-4xl font-bold text-center text-gray-700 py-5">
-            Mediterranean lifestyle in your city?
+            What it is all about?
         </h1>
         <p class="mt-2 text-2xl text-center text-gray-700">
             People are happier and live longer when they spend time together,
@@ -41,7 +41,7 @@
             break? 🤗
             <br /><br />
             At Hook Cafe you can find people of the same values nearby so you can
-            go out and have a real chat!
+            go out and have a real conversation!
         </p>
     </div>
 </section>
@@ -64,7 +64,9 @@
             on:mouseenter={toggleImages}
             on:mouseleave={toggleImages}
         >
-            <h1 class="text-6xl font-bold text-center text-gray-700 py-5"></h1>
+            <h1 class="text-6xl font-bold text-center text-gray-700 py-5">
+                #1
+            </h1>
             <h1 class="text-4xl font-bold text-center text-gray-700 py-5">
                 Choose your keywords, location and time
             </h1>

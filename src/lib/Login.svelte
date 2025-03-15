@@ -139,10 +139,10 @@
 </script>
 
 <div
-  class=" justify-center px-8 py-12 w-66 h-96 scrollbar-hidden overflow-y-scroll"
+  class="justify-center px-8 py-12 w-full max-w-md h-96 scrollbar-hidden overflow-y-scroll"
 >
   {#if hasAccount}
-    <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+    <div class="sm:mx-auto sm:w-full">
       <h2
         class="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900"
       >
@@ -150,7 +150,7 @@
       </h2>
     </div>
 
-    <div class="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+    <div class="mt-10 sm:mx-auto sm:w-full">
       <form class="form-widget" on:submit|preventDefault={handleSignin}>
         <div>
           <label
@@ -158,13 +158,37 @@
             class="block text-sm font-medium leading-6 text-gray-900"
             >Private key</label
           >
-          <div class="mt-2">
+          <div class="mt-2 relative">
             <input
               id="secretKey"
-              class="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
+              class="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6 pr-8"
               type="password"
               bind:value={secretKey}
             />
+            {#if secretKey}
+              <button
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                on:click={() => {
+                  secretKey = "";
+                }}
+                type="button"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            {/if}
           </div>
         </div>
 
@@ -188,7 +212,7 @@
       </p>
     </div>
   {:else}
-    <div class="sm:mx-auto sm:w-full sm:max-w-sm">
+    <div class="sm:mx-auto sm:w-full">
       <h2
         class="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900"
       >
@@ -196,38 +220,92 @@
       </h2>
     </div>
 
-    <div class="mt-10 sm:mx-auto sm:max-w-sm">
+    <div class="mt-10 sm:mx-auto">
       <form class="form-widget" on:submit|preventDefault={handleRegister}>
         <div>
           <div class="mt-2">
-            <input
-              id="name"
-              class="block w-full rounded-md border-0 py-1.5 pl-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
-              type="text"
-              placeholder="name or nickname"
-              required
-              bind:value={name}
-              on:change={onUpdateName}
-            />
+            <div class="relative">
+              <input
+                id="name"
+                class="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6 pr-8"
+                type="text"
+                placeholder="name or nickname"
+                required
+                bind:value={name}
+                on:change={onUpdateName}
+              />
+              {#if name}
+                <button
+                  class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                  on:click={() => {
+                    name = "";
+                    onUpdateName();
+                  }}
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              {/if}
+            </div>
           </div>
           <div>
             <div class="mt-2 relative">
               <input
                 id="city"
-                class="block w-full rounded-md border-0 py-1.5 pl-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6"
+                class="block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-teal-600 sm:text-sm sm:leading-6 pr-8"
                 type="text"
                 placeholder="city"
                 required
                 bind:value={query}
                 on:input={handleInput}
               />
+              {#if query}
+                <button
+                  class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                  on:click={() => {
+                    query = "";
+                    city = null;
+                    results = [];
+                    dispatchCitySelection("change", { city });
+                  }}
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              {/if}
               {#if results.length > 0}
                 <div
                   class="absolute z-10 w-full bg-white rounded-md shadow-lg max-h-60 overflow-y-auto scrollbar-hidden"
                 >
                   {#each results as city}
                     <button
-                      class="block w-full p-2 text-left cursor-pointer hover:bg-gray-200"
+                      class="block w-full p-2 text-left cursor-pointer hover:bg-gray-200 text-sm truncate"
                       on:click={() => selectCity(city)}
                     >
                       {city.name}, {city.country}

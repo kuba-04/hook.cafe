@@ -389,37 +389,89 @@
             >
               {name}
             </dd> -->
-            <input
-              bind:value={name}
-              id="name"
-              name="text"
-              type="text"
-              required
-              class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-1 sm:mt-0 bg-gray-900 dark:hover:bg-gray-600"
-              placeholder="Name"
-            />
+            <div class="w-full relative">
+              <input
+                bind:value={name}
+                id="name"
+                name="text"
+                type="text"
+                required
+                class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-1 sm:mt-0 bg-gray-900 dark:hover:bg-gray-600 w-full px-3 py-2 rounded-md pr-8"
+                placeholder="Name"
+              />
+              {#if name}
+                <button
+                  class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                  on:click={() => {
+                    name = "";
+                  }}
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              {/if}
+            </div>
           </div>
           <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt class="text-sm font-medium leading-6 text-gray-300">City</dt>
-            <div class="relative">
+            <div class="relative w-full">
               <input
                 id="city"
                 name="text"
                 type="text"
                 required
-                class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-1 sm:mt-0 bg-gray-900 dark:hover:bg-gray-600"
+                class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-1 sm:mt-0 bg-gray-900 dark:hover:bg-gray-600 w-full px-3 py-2 rounded-md pr-8"
                 placeholder="City"
                 bind:value={query}
                 on:input={handleInputCity}
                 disabled={hasAlreadySubmitted}
               />
+              {#if query && !hasAlreadySubmitted}
+                <button
+                  class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                  on:click={() => {
+                    query = "";
+                    city = null;
+                    results = [];
+                  }}
+                  type="button"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              {/if}
               {#if results.length > 0}
                 <div
                   class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm"
                 >
                   {#each results as city}
                     <button
-                      class="cursor-pointer select-none relative py-2 pl-3 pr-9 text-gray-900 hover:bg-teal-600 hover:text-white"
+                      class="cursor-pointer select-none relative py-2 pl-3 pr-9 text-gray-900 hover:bg-teal-600 hover:text-white w-full text-left truncate"
                       on:click={() => selectCity(city)}
                     >
                       {city.name}, {city.country}
