@@ -75,6 +75,7 @@
   let channelId: string | null = null;
   let chatOpen: boolean | null = null;
   let loadingComplete: boolean;
+  let isInitialLoading = true;
 
   // price slider
   let minValue: number;
@@ -279,10 +280,12 @@
     if ($page?.state?.privKey && typeof $page.state.privKey === "string") {
       preloadKey = $page.state.privKey;
     } else {
+      isInitialLoading = false;
       return;
     }
 
     if (!preloadKey) {
+      isInitialLoading = false;
       return;
     }
 
@@ -318,6 +321,10 @@
       } else {
         await initMessages();
       }
+
+      setTimeout(() => {
+        isInitialLoading = false;
+      }, 500);
     }
   });
 
@@ -702,7 +709,7 @@
     }
 
     try {
-      submitted = await sendMessage(message);
+      await sendMessage(message);
     } catch (error) {
       console.log(error);
     } finally {
@@ -731,10 +738,15 @@
       ["priceTo", message.priceTo || ""],
     ];
 
-    console.log("Sending event...: ", ndkEvent);
+    submitted = ndkEvent;
 
     await ndkEvent.sign();
-    await ndkEvent.publish();
+    try {
+      await ndkEvent.publish();
+    } catch (error) {
+      console.error(error);
+      submitted = null;
+    }
     return ndkEvent;
   }
 
@@ -985,381 +997,398 @@
         </div>
       </div>
 
-      <!-- <div
-        class={(submitted || !isAuthenticated) && !chatOpen
-          ? "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-1"
-          : "mx-auto grid max-w-2xl grid-cols-1 gap-x-20 lg:max-w-none lg:grid-cols-2"}
-      > -->
-      <div
-        class={submitted && !chatOpen
-          ? "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-1"
-          : "mx-auto grid max-w-2xl grid-cols-1 gap-x-20 lg:max-w-none lg:grid-cols-2"}
-      >
-        <!-- form -->
-        {#if !submitted}
-          <div class="flex flex-col place-content-center my-10">
-            <div class="max-w-xl lg:max-w-lg">
-              <h2
-                class="text-3xl font-bold tracking-tight text-white sm:text-4xl"
+      {#if isInitialLoading}
+        <!-- Loading state -->
+        <div class="flex justify-center items-center h-96">
+          <div class="text-center">
+            <div
+              class="inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-teal-400 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"
+              role="status"
+            >
+              <span
+                class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]"
+                >Loading...</span
               >
-                Let's eat together!
-              </h2>
-              <p class="mt-4 text-lg leading-8 text-gray-300">
-                Type below what you have in mind today
-              </p>
-              <p class="text-md text-gray-500">
-                Only 4 words to encourage people to join
-              </p>
-              <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-md">
-                <div>
-                  <label for="word-1" class="sr-only">Word 1</label>
-                  <input
-                    bind:value={inputWord1}
-                    on:change={onChangeWord1}
-                    id="word-1"
-                    name="text"
-                    type="text"
-                    required
-                    class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
-                    placeholder="Word 1"
-                  />
-                </div>
-
-                <div>
-                  <label for="word-2" class="sr-only">Word 2</label>
-                  <input
-                    bind:value={inputWord2}
-                    on:change={onChangeWord2}
-                    id="word-2"
-                    name="text"
-                    type="text"
-                    required
-                    class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
-                    placeholder="Word 2"
-                  />
-                </div>
-
-                <div>
-                  <label for="word-3" class="sr-only">Word 3</label>
-                  <input
-                    bind:value={inputWord3}
-                    on:change={onChangeWord3}
-                    id="word-3"
-                    name="text"
-                    type="text"
-                    required
-                    class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
-                    placeholder="Word 3"
-                  />
-                </div>
-
-                <div>
-                  <label for="word-4" class="sr-only">Word 4</label>
-                  <input
-                    bind:value={inputWord4}
-                    on:change={onChangeWord4}
-                    id="word-4"
-                    name="text"
-                    type="text"
-                    required
-                    class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
-                    placeholder="Word 4"
-                  />
-                </div>
-              </div>
-              <p class="mt-4 text-lg leading-8 text-gray-300">
-                Where can you meet?
-              </p>
-              <!-- location -->
-              <div class="mt-4 flex-direction max-w-md gap-x-4">
-                <label for="location" class="sr-only">Location</label>
-                <input
-                  bind:value={inputLocation}
-                  on:change={onChangeLocation}
-                  id="location"
-                  name="text"
-                  type="text"
-                  required
-                  class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
-                  placeholder="Street or borough"
-                />
-              </div>
-              <p class="mt-4 text-lg leading-8 text-gray-300">When?</p>
-              <!-- timepicker -->
-              <div class="mt-4 flex max-w-md gap-x-4">
-                <span
-                  id="time-from"
-                  class="min-w-0 flex-direction rounded-md border-0 bg-white/5 px-3.5 py-2 text-black shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+            </div>
+            <p class="mt-4 text-lg text-gray-300">Getting ready...</p>
+          </div>
+        </div>
+      {:else}
+        <div
+          class={submitted && !chatOpen
+            ? "mx-auto grid max-w-2xl grid-cols-1 lg:max-w-none lg:grid-cols-1"
+            : "mx-auto grid max-w-2xl grid-cols-1 gap-x-20 lg:max-w-none lg:grid-cols-2"}
+        >
+          <!-- form -->
+          {#if !submitted}
+            <div class="flex flex-col place-content-center my-10">
+              <div class="max-w-xl lg:max-w-lg">
+                <h2
+                  class="text-3xl font-bold tracking-tight text-white sm:text-4xl"
                 >
-                  <TimeRangePicker
-                    bind:startTime={timeFrom}
-                    bind:endTime={timeTo}
-                    on:change={handleTimeRangeChange}
+                  Let's eat together!
+                </h2>
+                <p class="mt-4 text-lg leading-8 text-gray-300">
+                  Type below what you have in mind today
+                </p>
+                <p class="text-md text-gray-500">
+                  Only 4 words to encourage people to join
+                </p>
+                <div
+                  class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-md"
+                >
+                  <div>
+                    <label for="word-1" class="sr-only">Word 1</label>
+                    <input
+                      bind:value={inputWord1}
+                      on:change={onChangeWord1}
+                      id="word-1"
+                      name="text"
+                      type="text"
+                      required
+                      class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
+                      placeholder="Word 1"
+                    />
+                  </div>
+
+                  <div>
+                    <label for="word-2" class="sr-only">Word 2</label>
+                    <input
+                      bind:value={inputWord2}
+                      on:change={onChangeWord2}
+                      id="word-2"
+                      name="text"
+                      type="text"
+                      required
+                      class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
+                      placeholder="Word 2"
+                    />
+                  </div>
+
+                  <div>
+                    <label for="word-3" class="sr-only">Word 3</label>
+                    <input
+                      bind:value={inputWord3}
+                      on:change={onChangeWord3}
+                      id="word-3"
+                      name="text"
+                      type="text"
+                      required
+                      class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
+                      placeholder="Word 3"
+                    />
+                  </div>
+
+                  <div>
+                    <label for="word-4" class="sr-only">Word 4</label>
+                    <input
+                      bind:value={inputWord4}
+                      on:change={onChangeWord4}
+                      id="word-4"
+                      name="text"
+                      type="text"
+                      required
+                      class="w-full rounded-md border-0 bg-white/5 px-2.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-xs sm:leading-6"
+                      placeholder="Word 4"
+                    />
+                  </div>
+                </div>
+                <p class="mt-4 text-lg leading-8 text-gray-300">
+                  Where can you meet?
+                </p>
+                <!-- location -->
+                <div class="mt-4 flex-direction max-w-md gap-x-4">
+                  <label for="location" class="sr-only">Location</label>
+                  <input
+                    bind:value={inputLocation}
+                    on:change={onChangeLocation}
+                    id="location"
+                    name="text"
+                    type="text"
+                    required
+                    class="min-w-0 flex-auto rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                    placeholder="Street or borough"
                   />
-                </span>
-              </div>
-
-              <!-- TODO: not working on mobile browsers -->
-              <p class="mt-6 text-lg leading-8 text-gray-300">
-                Your food budget
-              </p>
-              <div class="mt-2 flex max-w-md gap-x-4">
-                <span class="mt-4 text-lg leading-8 text-gray-300"
-                  >{minValue}</span
-                >
-                <Slider bind:minValue bind:maxValue />
-                <span class="mt-4 text-lg leading-8 text-gray-300"
-                  >{maxValue}</span
-                >
-              </div>
-
-              <!-- alert -->
-              {#if showAlertOnSubmittingInvalid}
-                <OnSubmitInvalidAlert />
-              {/if}
-              <!-- alert -->
-              {#if showAlertOnAlreadySubmitted}
-                <OnAlreadySubmittedAlert />
-              {/if}
-
-              <div>
-                {#if isAuthenticated}
-                  <button
-                    on:click={handleSubmit}
-                    type="submit"
-                    class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                </div>
+                <p class="mt-4 text-lg leading-8 text-gray-300">When?</p>
+                <!-- timepicker -->
+                <div class="mt-4 flex max-w-md gap-x-4">
+                  <span
+                    id="time-from"
+                    class="min-w-0 flex-direction rounded-md border-0 bg-white/5 px-3.5 py-2 text-black shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
                   >
-                    Let's go!
-                  </button>
-                {:else}
-                  <button
-                    on:click={() => (showModal = true)}
-                    type="submit"
-                    class="mt-5 float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                    <TimeRangePicker
+                      bind:startTime={timeFrom}
+                      bind:endTime={timeTo}
+                      on:change={handleTimeRangeChange}
+                    />
+                  </span>
+                </div>
+
+                <!-- TODO: not working on mobile browsers -->
+                <p class="mt-6 text-lg leading-8 text-gray-300">
+                  Your food budget
+                </p>
+                <div class="mt-2 flex max-w-md gap-x-4">
+                  <span class="mt-4 text-lg leading-8 text-gray-300"
+                    >{minValue}</span
                   >
-                    Let's go!
-                  </button>
+                  <Slider bind:minValue bind:maxValue />
+                  <span class="mt-4 text-lg leading-8 text-gray-300"
+                    >{maxValue}</span
+                  >
+                </div>
+
+                <!-- alert -->
+                {#if showAlertOnSubmittingInvalid}
+                  <OnSubmitInvalidAlert />
                 {/if}
-              </div>
-            </div>
-          </div>
-        {/if}
-        <!-- end form -->
+                <!-- alert -->
+                {#if showAlertOnAlreadySubmitted}
+                  <OnAlreadySubmittedAlert />
+                {/if}
 
-        <!-- chat -->
-        {#if chatOpen}
-          <div
-            class="bg-gray-900 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"
-          >
-            <div class="max-w-4xl max-y-md py-16 sm:py-24 lg:py-32">
-              <Chat {ndk} username={name} {channelId} signerKey={pubkey}></Chat>
-            </div>
-          </div>
-        {/if}
-
-        <!-- alert -->
-        {#if showAlertOnSubmittingSuccess}
-          <OnSubmittingSuccessAlert
-            on:showAlert={() => (showAlertOnSubmittingSuccess = false)}
-          />
-        {/if}
-
-        {#await initConnectedMessages}
-          <p>Loading...</p>
-          <!-- Loader displayed while waiting -->
-        {:then _}
-          <!-- list -->
-          <dl class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2">
-            <!-- alert -->
-            {#if showAlertOnSelectUnsubmitted}
-              <OnSelectUnsubmittedAlert />
-            {/if}
-            <!-- alert -->
-            {#if showAlertOnSelectingSelf}
-              <OnSelectingSelfAlert />
-            {/if}
-            {#if showYouGotSelected}
-              <div class="text-lg font-semibold leading-6 text-white">
-                Someone selected you!
-              </div>
-              <SomeoneSelectedMeAlert
-                eventData={myFollowEvent}
-                on:reaction={async (event) => {
-                  const { reactionData } = event.detail;
-                  try {
-                    const reactionEvent = new NDKEvent(ndk);
-                    reactionEvent.kind = reactionData.kind;
-                    reactionEvent.content = reactionData.content;
-                    reactionEvent.tags = reactionData.tags;
-                    await reactionEvent.sign();
-                    await reactionEvent.publish();
-
-                    // Add both users to the group if it's a positive reaction
-                    // const followerPubkey = myFollowEvent?.pubkey || null;
-                    // if (followerPubkey && reactionData.content === "+") {
-                    //   eventsInGroup.add(pubkey); // Add myself
-                    //   eventsInGroup.add(followerPubkey); // Add the follower
-                    //   eventsInGroup = eventsInGroup;
-                    // }
-                  } catch (error) {
-                    console.error("Error publishing reaction:", error);
-                  } finally {
-                    showYouGotSelected = false;
-                  }
-                }}
-              />
-            {/if}
-            {#if showRejectionAlert}
-              <SomeoneRejectedMeAlert eventData={rejectionEvent} />
-            {/if}
-            <ul role="list" class="divide-y divide-gray-100 mt-5">
-              {#each messages.filter((m) => !rejectedEvents.has(m.event.pubkey)) as message (message.event.id)}
-                <button
-                  on:click={() => select(message.event)}
-                  class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer w-full"
-                >
-                  <div class="flex min-w-0 gap-x-7">
-                    <div class="flex min-w-10 items-center relative">
-                      {#if !message.author?.image}
-                        <div class="avatarLoader">Loading...</div>
-                      {:else}
-                        <div class="relative">
-                          <img
-                            class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                            src={message?.author?.image || ""}
-                            alt=""
-                          />
-                          {#if eventsInGroup.has(message.event.pubkey)}
-                            <div class="absolute -bottom-1 -right-1">
-                              <span class="text-xs">✅</span>
-                            </div>
-                          {/if}
-                        </div>
-                      {/if}
-                    </div>
-                    <div class="grid grid-cols-1 gap-0 content-center">
-                      <div
-                        class="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-2 text-sm font-semibold text-white"
-                      >
-                        <span
-                          class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
-                        >
-                          {parseEventContent(message).parsedContent.word1}
-                        </span>
-                        <span
-                          class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
-                        >
-                          {parseEventContent(message).parsedContent.word2}
-                        </span>
-                        <span
-                          class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
-                        >
-                          {parseEventContent(message).parsedContent.word3}
-                        </span>
-                        <span
-                          class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
-                        >
-                          {parseEventContent(message).parsedContent.word4}
-                        </span>
-                      </div>
-                      {#if !message.author || !message.author.name}
-                        <p
-                          class="mt-1 px-1.5 truncate text-xs flex justify-start text-gray-400"
-                        >
-                          ???
-                        </p>
-                      {:else}
-                        <p
-                          class="mt-1 px-1.5 truncate text-xs flex justify-start text-gray-400"
-                        >
-                          {message.author?.name}
-                        </p>
-                      {/if}
-                    </div>
-                  </div>
-                  <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
-                    <div class="text-sm leading-6 text-gray-200 truncate">
-                      {parseEventContent(message).parsedContent.location}
-                    </div>
-                    <div class="text-sm leading-6 text-gray-200 truncate">
-                      @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(
-                        message,
-                      ).parsedContent.timeTo}
-                    </div>
-                    <!-- <small class="text-xs leading-6 text-gray-400">
-                      added {new Date(message.created_at * 1000).toLocaleTimeString([], {timeStyle: 'short'}) }
-                    </small> -->
-
-                    <small class="text-xs leading-6 text-gray-400 truncate">
-                      💵 {parseEventContent(message).parsedContent.minPrice} - {parseEventContent(
-                        message,
-                      ).parsedContent.maxPrice}
-                    </small>
-                    <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
-                  </div>
-                </button>
-              {/each}
-              {#if selectedAuthor.length > 0 && messages.length < 4}
-                <li class="flex justify-between gap-x-3 px-4 py-5">
-                  <div class="place-content-center min-w-0 gap-x-4">
-                    <span class="text-gray-400"
-                      >Please wait<span class="text-gray-400 animate-ping"
-                        >...</span
-                      > we need 4 people to create a group chat ⏳</span
+                <div>
+                  {#if isAuthenticated}
+                    <button
+                      on:click={handleSubmit}
+                      type="submit"
+                      class="float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
                     >
-                  </div>
-                </li>
-              {:else if messages.length === 0}
-                <div class="divide-y divide-gray-100 mt-5">
-                  <Tooltip text="Get inspired!" position="center">
-                    <button on:click={openInspirationModal}>
-                      <div
-                        class="inspire-img"
-                        on:mouseenter={toggleMainImage}
-                        on:mouseleave={toggleMainImage}
-                      >
-                        <div
-                          class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? "opacity-0" : "opacity-100"}`}
-                        >
-                          <img
-                            alt="front-img"
-                            src="/images/photos/hook_front.jpg"
-                            class="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div
-                          class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? "opacity-100" : "opacity-0"}`}
-                        >
-                          <img
-                            alt="cartoon-img"
-                            src="/images/photos/hook_front_cartoon.png"
-                            class="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
+                      Let's go!
                     </button>
-                  </Tooltip>
+                  {:else}
+                    <button
+                      on:click={() => (showModal = true)}
+                      type="submit"
+                      class="mt-5 float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                    >
+                      Let's go!
+                    </button>
+                  {/if}
                 </div>
-              {/if}
-            </ul>
-          </dl>
+              </div>
+            </div>
+          {/if}
+          <!-- end form -->
 
-          <div>
-            {#if selectedAuthor.length > 0 && messages.length > 3 && !chatOpen && loadingComplete}
-              <button
-                on:click={openOrJoinChat}
-                type="button"
-                class="mt-5 float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 hover:outline-2 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
-              >
-                Chat 💬
-              </button>
-            {/if}
-          </div>
-        {:catch error}
-          <p>Error loading data: {error.message}</p>
-          <!-- Error handling -->
-        {/await}
-      </div>
+          <!-- chat -->
+          {#if chatOpen}
+            <div
+              class="bg-gray-900 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8"
+            >
+              <div class="max-w-4xl max-y-md py-16 sm:py-24 lg:py-32">
+                <Chat {ndk} username={name} {channelId} signerKey={pubkey}
+                ></Chat>
+              </div>
+            </div>
+          {/if}
+
+          <!-- alert -->
+          {#if showAlertOnSubmittingSuccess}
+            <OnSubmittingSuccessAlert
+              on:showAlert={() => (showAlertOnSubmittingSuccess = false)}
+            />
+          {/if}
+
+          {#await initConnectedMessages}
+            <p>Loading...</p>
+            <!-- Loader displayed while waiting -->
+          {:then _}
+            <!-- list -->
+            <dl
+              class="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-1 lg:pt-2"
+            >
+              <!-- alert -->
+              {#if showAlertOnSelectUnsubmitted}
+                <OnSelectUnsubmittedAlert />
+              {/if}
+              <!-- alert -->
+              {#if showAlertOnSelectingSelf}
+                <OnSelectingSelfAlert />
+              {/if}
+              {#if showYouGotSelected}
+                <div class="text-lg font-semibold leading-6 text-white">
+                  Someone selected you!
+                </div>
+                <SomeoneSelectedMeAlert
+                  eventData={myFollowEvent}
+                  on:reaction={async (event) => {
+                    const { reactionData } = event.detail;
+                    try {
+                      const reactionEvent = new NDKEvent(ndk);
+                      reactionEvent.kind = reactionData.kind;
+                      reactionEvent.content = reactionData.content;
+                      reactionEvent.tags = reactionData.tags;
+                      await reactionEvent.sign();
+                      await reactionEvent.publish();
+
+                      // Add both users to the group if it's a positive reaction
+                      // const followerPubkey = myFollowEvent?.pubkey || null;
+                      // if (followerPubkey && reactionData.content === "+") {
+                      //   eventsInGroup.add(pubkey); // Add myself
+                      //   eventsInGroup.add(followerPubkey); // Add the follower
+                      //   eventsInGroup = eventsInGroup;
+                      // }
+                    } catch (error) {
+                      console.error("Error publishing reaction:", error);
+                    } finally {
+                      showYouGotSelected = false;
+                    }
+                  }}
+                />
+              {/if}
+              {#if showRejectionAlert}
+                <SomeoneRejectedMeAlert eventData={rejectionEvent} />
+              {/if}
+              <ul role="list" class="divide-y divide-gray-100 mt-5">
+                {#each messages.filter((m) => !rejectedEvents.has(m.event.pubkey)) as message (message.event.id)}
+                  <button
+                    on:click={() => select(message.event)}
+                    class="flex justify-between gap-x-3 px-4 py-5 hover:bg-gray-600 cursor-pointer w-full"
+                  >
+                    <div class="flex min-w-0 gap-x-7">
+                      <div class="flex min-w-10 items-center relative">
+                        {#if !message.author?.image}
+                          <div class="avatarLoader">Loading...</div>
+                        {:else}
+                          <div class="relative">
+                            <img
+                              class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
+                              src={message?.author?.image || ""}
+                              alt=""
+                            />
+                            {#if eventsInGroup.has(message.event.pubkey)}
+                              <div class="absolute -bottom-1 -right-1">
+                                <span class="text-xs">✅</span>
+                              </div>
+                            {/if}
+                          </div>
+                        {/if}
+                      </div>
+                      <div class="grid grid-cols-1 gap-0 content-center">
+                        <div
+                          class="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-2 text-sm font-semibold text-white"
+                        >
+                          <span
+                            class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
+                          >
+                            {parseEventContent(message).parsedContent.word1}
+                          </span>
+                          <span
+                            class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
+                          >
+                            {parseEventContent(message).parsedContent.word2}
+                          </span>
+                          <span
+                            class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
+                          >
+                            {parseEventContent(message).parsedContent.word3}
+                          </span>
+                          <span
+                            class="truncate px-1.5 py-0.5 bg-gray-700 rounded-md"
+                          >
+                            {parseEventContent(message).parsedContent.word4}
+                          </span>
+                        </div>
+                        {#if !message.author || !message.author.name}
+                          <p
+                            class="mt-1 px-1.5 truncate text-xs flex justify-start text-gray-400"
+                          >
+                            ???
+                          </p>
+                        {:else}
+                          <p
+                            class="mt-1 px-1.5 truncate text-xs flex justify-start text-gray-400"
+                          >
+                            {message.author?.name}
+                          </p>
+                        {/if}
+                      </div>
+                    </div>
+                    <div class="shrink-0 sm:flex sm:flex-col sm:items-end">
+                      <div class="text-sm leading-6 text-gray-200 truncate">
+                        {parseEventContent(message).parsedContent.location}
+                      </div>
+                      <div class="text-sm leading-6 text-gray-200 truncate">
+                        @ {parseEventContent(message).parsedContent.timeFrom} - {parseEventContent(
+                          message,
+                        ).parsedContent.timeTo}
+                      </div>
+                      <!-- <small class="text-xs leading-6 text-gray-400">
+                        added {new Date(message.created_at * 1000).toLocaleTimeString([], {timeStyle: 'short'}) }
+                      </small> -->
+
+                      <small class="text-xs leading-6 text-gray-400 truncate">
+                        💵 {parseEventContent(message).parsedContent.minPrice} -
+                        {parseEventContent(message).parsedContent.maxPrice}
+                      </small>
+                      <!-- <p class="mt-1 text-xs leading-5 text-gray-500">Last seen <time datetime="2023-01-23T13:23Z">3h ago</time></p> -->
+                    </div>
+                  </button>
+                {/each}
+                {#if selectedAuthor.length > 0 && messages.length < 4}
+                  <li class="flex justify-between gap-x-3 px-4 py-5">
+                    <div class="place-content-center min-w-0 gap-x-4">
+                      <span class="text-gray-400"
+                        >Please wait<span class="text-gray-400 animate-ping"
+                          >...</span
+                        > we need 4 people to create a group chat ⏳</span
+                      >
+                    </div>
+                  </li>
+                {:else if messages.length === 0 && !submitted}
+                  <div class="divide-y divide-gray-100 mt-5">
+                    <Tooltip text="Get inspired!" position="center">
+                      <button on:click={openInspirationModal}>
+                        <div
+                          class="inspire-img"
+                          on:mouseenter={toggleMainImage}
+                          on:mouseleave={toggleMainImage}
+                        >
+                          <div
+                            class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? "opacity-0" : "opacity-100"}`}
+                          >
+                            <img
+                              alt="front-img"
+                              src="/images/photos/hook_front.jpg"
+                              class="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div
+                            class={`transition-opacity duration-1000 ease-in-out ${isImageCartoon ? "opacity-100" : "opacity-0"}`}
+                          >
+                            <img
+                              alt="cartoon-img"
+                              src="/images/photos/hook_front_cartoon.png"
+                              class="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      </button>
+                    </Tooltip>
+                  </div>
+                {/if}
+              </ul>
+            </dl>
+
+            <div>
+              {#if selectedAuthor.length > 0 && messages.length > 3 && !chatOpen && loadingComplete}
+                <button
+                  on:click={openOrJoinChat}
+                  type="button"
+                  class="mt-5 float-right text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 hover:outline-2 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                >
+                  Chat 💬
+                </button>
+              {/if}
+            </div>
+          {:catch error}
+            <p>Error loading data: {error.message}</p>
+            <!-- Error handling -->
+          {/await}
+        </div>
+      {/if}
     </div>
   </div>
 </main>
