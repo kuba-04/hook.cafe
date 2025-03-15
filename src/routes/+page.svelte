@@ -173,9 +173,7 @@
 
     pubkey = (await signer.user()).pubkey;
 
-    await ndk
-      .connect()
-      .then(() => console.log("Connected to NDK successfully"));
+    await ndk.connect().then(() => console.log("Connected"));
     await setProfileData(ndk, name, city, avatar);
 
     // Check if the message is valid and submit it automatically
