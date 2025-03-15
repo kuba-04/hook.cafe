@@ -25,7 +25,7 @@
     <div class="flex min-w-0 gap-x-7">
         <div class="flex min-w-10 items-center">
             {#if !profile?.image}
-                <div class="avatarLoader">Loading...</div>
+                <!-- <div class="avatarLoader">Loading...</div> -->
             {:else}
                 <img
                     class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500"
