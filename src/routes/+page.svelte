@@ -1264,13 +1264,13 @@
                       </div>
                       {#if !message.author || !message.author.name}
                         <p
-                          class="mt-1 truncate text-xs flex justify-start text-gray-500"
+                          class="mt-1 px-1.5 truncate text-xs flex justify-start text-gray-400"
                         >
                           ???
                         </p>
                       {:else}
                         <p
-                          class="mt-1 truncate text-xs flex justify-start text-gray-500"
+                          class="mt-1 px-1.5 truncate text-xs flex justify-start text-gray-400"
                         >
                           {message.author?.name}
                         </p>
