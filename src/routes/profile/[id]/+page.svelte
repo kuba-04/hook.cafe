@@ -21,14 +21,14 @@
     tz: string;
   }
 
-  let selectedAvatar = "";
+  let selectedAvatar: string | undefined | number = "";
   let ndk: NDK;
   let name = "";
   let npub: string;
   let hexPubkey: string;
   let privKey: string = "";
   let keyArray: Uint8Array;
-  let avatar = "";
+  let avatar: string | undefined | number = "";
   let showModal = false;
   let showAlertOnSave = false;
   let hasAlreadySubmitted = false;
@@ -97,8 +97,8 @@
 
     const profile = await getUserProfile(ndk, npub);
     name = profile.name || "";
-    if (profile.about) {
-      const [cityName, cityCountry, tz] = profile.about.split(",");
+    if (profile.bio) {
+      const [cityName, cityCountry, tz] = profile.bio.split(",");
       city =
         cityName && cityCountry && tz ? { cityName, cityCountry, tz } : null;
     }
@@ -183,7 +183,7 @@
     metadataEvent.kind = 0;
     const content = JSON.stringify({
       name: name,
-      about: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
+      bio: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
       image: avatar,
     });
     metadataEvent.content = content;

@@ -54,7 +54,7 @@
             tags: [
               ["e", eventData.id],
               ["p", eventData.pubkey],
-              ["ownerCity", profile?.about],
+              ["ownerCity", profile?.bio],
             ],
           },
         });
@@ -73,7 +73,7 @@
             tags: [
               ["e", eventData.id],
               ["p", eventData.pubkey],
-              ["ownerCity", profile?.about],
+              ["ownerCity", profile?.bio],
             ],
           },
         });

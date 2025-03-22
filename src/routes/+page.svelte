@@ -62,14 +62,14 @@
   let isAuthenticated = false;
   let name = "";
   let city: City | null = null;
-  let avatar = "";
+  let avatar: string | number | undefined = "";
   let privKey = "";
   let pubkey = "";
   let signer: NDKPrivateKeySigner;
   let signerProfile: NDKUserProfile;
   let subscription: NDKSubscription;
   let messages: Message[] = [];
-  let userProfiles = new Map<string, Author>();
+  let userProfiles = new Map<string, NDKUserProfile>();
   let submitted: NDKEvent | null = null;
   let selectedAuthor = "";
   let channelId: string | null = null;
@@ -154,7 +154,7 @@
   async function handleRegister(event: CustomEvent): Promise<void> {
     name = event.detail.name;
     city = event.detail.city;
-    avatar = event.detail.avatar;
+    avatar = event.detail.image;
     signer = event.detail.signer;
 
     if (signer) {
@@ -180,13 +180,12 @@
     validateMessage();
     if (isMessageValid && isAuthenticated && name.length > 0) {
       try {
-        setTimeout(async () => {
-          await handleSubmit();
-          // Hide the form after successful submission
-          submitted = await sendMessage(message);
-        }, 1000);
+        await handleSubmit();
       } catch (error) {
         console.error("Error submitting message after registration:", error);
+        setTimeout(async () => {
+          await handleSubmit();
+        }, 300);
       }
     }
 
@@ -202,6 +201,7 @@
     });
 
     await user.fetchProfile();
+    await user.fetchProfile();
     return user.profile as NDKUserProfile;
   }
 
@@ -215,23 +215,29 @@
     metadataEvent.kind = 0;
     const content = JSON.stringify({
       name: name,
-      about: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
+      bio: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
       image: avatar,
     });
+
     metadataEvent.content = content;
     await metadataEvent.sign();
     try {
       await metadataEvent.publish();
     } catch (error) {
+      console.log(error);
       setTimeout(async () => {
-        await metadataEvent.publish();
-      }, 1000);
+        await metadataEvent
+          .publish()
+          .then(() =>
+            console.log("retry publishing kind: ", metadataEvent.kind),
+          );
+      }, 300);
     }
   }
 
   function getCityFromProfile(profile: NDKUserProfile): City | null {
-    if (!profile.about) return null;
-    const [cityName, cityCountry, tz] = profile.about.split(",");
+    if (!profile.bio) return null;
+    const [cityName, cityCountry, tz] = profile.bio.split(",");
     if (!cityName || !cityCountry || !tz) {
       console.log("Missing city data parts");
       return null;
@@ -618,10 +624,13 @@
   async function fetchUserProfile(eventPubkey: string): Promise<void> {
     if (userProfiles.has(eventPubkey)) return;
     const user = ndk.getUser({ pubkey: eventPubkey });
+    // todo: https://github.com/nostr-dev-kit/ndk/issues/232
+    await user.fetchProfile();
     await user.fetchProfile();
     const profile = user.profile;
     if (profile) {
-      userProfiles.set(eventPubkey, profile as unknown as Author);
+      // console.log("Fetched profile for event: ", profile);
+      userProfiles.set(eventPubkey, profile);
       validateMessagesWithProfile(eventPubkey, profile);
       loadingComplete = isLoadingComplete();
     }
@@ -781,7 +790,7 @@
     }
   }
 
-  async function sendMessage(message: MessageContent): Promise<NDKEvent> {
+  async function sendMessage(message: MessageContent): Promise<void> {
     const ndkEvent = new NDKEvent(ndk);
     ndkEvent.kind = 1;
 
@@ -801,16 +810,17 @@
       ["priceTo", message.priceTo || ""],
     ];
 
-    submitted = ndkEvent;
-
     await ndkEvent.sign();
     try {
-      await ndkEvent.publish();
+      setTimeout(
+        () => ndkEvent.publish().then((success) => (submitted = ndkEvent)),
+        300,
+      );
     } catch (error) {
       console.error(error);
       submitted = null;
     }
-    return ndkEvent;
+    // return ndkEvent;
   }
 
   async function openOrJoinChat(): Promise<void> {
@@ -1510,12 +1520,12 @@
                     <div class="flex min-w-0 gap-x-7">
                       <div class="flex min-w-10 items-center relative">
                         {#if !message.author?.image}
-                          <div class="avatarLoader">Loading...</div>
+                          <div class="avatarLoader"></div>
                         {:else}
                           <div class="relative">
                             <img
                               class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                              src={message?.author?.image || ""}
+                              src={message?.author?.image}
                               alt=""
                             />
                             {#if eventsInGroup.has(message.event.pubkey)}
