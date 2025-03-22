@@ -76,13 +76,11 @@
 
     // Add default relay from env if no relays exist
     if (relays.length === 0) {
-      relays = [
-        {
-          url: env.PUBLIC_RELAY_URL,
-          read: true,
-          write: true,
-        },
-      ];
+      relays = env.PUBLIC_RELAY_URL.split(",").map((url) => ({
+        url: url.trim(),
+        read: true,
+        write: true,
+      }));
     }
 
     if (typeof privKey === "string") {
@@ -92,7 +90,12 @@
     }
 
     const signer = new NDKPrivateKeySigner(keyArray);
-    ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
+    ndk = new NDK({
+      explicitRelayUrls: env.PUBLIC_RELAY_URL.split(",").map((url) =>
+        url.trim(),
+      ),
+      signer,
+    });
     await ndk.connect();
 
     const profile = await getUserProfile(ndk, npub);

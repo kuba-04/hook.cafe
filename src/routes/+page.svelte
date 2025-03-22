@@ -108,8 +108,8 @@
       }
     }
 
-    // Default to the environment relay if no saved relays
-    return [env.PUBLIC_RELAY_URL];
+    // Default to the environment relays if no saved relays
+    return env.PUBLIC_RELAY_URL.split(",").map((url) => url.trim());
   }
 
   // price slider
@@ -277,16 +277,28 @@
       return;
     }
 
+    let userRelays = loadUserRelays();
+
     ndk = new NDK({
-      explicitRelayUrls: loadUserRelays(),
+      explicitRelayUrls: userRelays,
       signer: signer,
     });
     await ndk.connect();
-    isAuthenticated = true;
-    showModal = false;
 
     pubkey = (await signer.user()).pubkey;
     const profile = await getUserProfile(ndk, pubkey);
+    let profile_found = profile.created_at !== undefined;
+
+    if (!profile_found) {
+      console.log("Couldn't find your key in specified relays: ", userRelays);
+      localStorage.clear();
+      showModal = false;
+      return;
+    }
+
+    isAuthenticated = true;
+    showModal = false;
+
     signerProfile = profile;
     name = profile?.name || "";
     city = getCityFromProfile(profile);

@@ -9,7 +9,11 @@
   const dispatch = createEventDispatcher();
 
   async function getUserProfile(pubkey: string): Promise<void> {
-    const ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL] });
+    const ndk = new NDK({
+      explicitRelayUrls: env.PUBLIC_RELAY_URL.split(",").map((url) =>
+        url.trim(),
+      ),
+    });
     await ndk.connect();
     const user = ndk.getUser({ pubkey });
     profile = await user.fetchProfile();
