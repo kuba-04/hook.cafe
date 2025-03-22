@@ -25,6 +25,7 @@
   import OnSubmittingSuccessAlert from "$lib/alerts/OnSubmittingSuccessAlert.svelte";
   import OnSelectingSelfAlert from "$lib/alerts/OnSelectingSelfAlert.svelte";
   import OnSelectUnsubmittedAlert from "$lib/alerts/OnSelectUnsubmittedAlert.svelte";
+  import OnInvalidKeyAlert from "$lib/alerts/OnInvalidKeyAlert.svelte";
   import Inspiration from "$lib/Inspiration.svelte";
   import InspirationModal from "$lib/InspirationModal.svelte";
   import Tooltip from "$lib/Tooltip.svelte";
@@ -130,12 +131,13 @@
   let isMessageValid = false;
   let message: MessageContent = {};
 
-  let showAlertOnSelectUnsubmitted = false;
+  let showAlertOnPageReload = false;
+  let showAlertOnSubmittingSuccess = false;
   let showAlertOnSubmittingInvalid = false;
   let showAlertOnAlreadySubmitted = false;
-  let showAlertOnSubmittingSuccess = false;
+  let showAlertOnSelectUnsubmitted = false;
   let showAlertOnSelectingSelf = false;
-  let showAlertOnPageReload = false;
+  let showAlertOnInvalidKey = false;
 
   let showYouGotSelected = false;
   let myFollowEvent: NDKEvent | null = null;
@@ -293,6 +295,8 @@
       console.log("Couldn't find your key in specified relays: ", userRelays);
       localStorage.clear();
       showModal = false;
+      showAlertOnInvalidKey = true;
+      setTimeout(() => (showAlertOnInvalidKey = false), 2000);
       return;
     }
 
@@ -1269,6 +1273,34 @@
             </svg>
           </button>
           <SomeoneRejectedMeAlert eventData={rejectionEvent} />
+        </div>
+      </div>
+    {/if}
+
+    {#if showAlertOnInvalidKey}
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showAlertOnInvalidKey = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showAlertOnInvalidKey = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+          <OnInvalidKeyAlert />
         </div>
       </div>
     {/if}
