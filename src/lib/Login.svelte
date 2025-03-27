@@ -43,7 +43,7 @@
     isNameValid = name.length >= 3;
   };
 
-  const handleRegister = async (): Promise<void> => {
+  async function handleRegister(): Promise<void> {
     loading = true;
     try {
       const signer = NDKPrivateKeySigner.generate();
@@ -59,9 +59,9 @@
     } finally {
       loading = false;
     }
-  };
+  }
 
-  const handleSignin = async (): Promise<void> => {
+  async function handleSignin(): Promise<void> {
     loading = true;
 
     if (secretKey && secretKey.startsWith("nsec")) {
@@ -94,7 +94,7 @@
     } finally {
       loading = false;
     }
-  };
+  }
 
   function dispatchLoggedInEvent(privKey: string): void {
     dispatch("login", { privKey });

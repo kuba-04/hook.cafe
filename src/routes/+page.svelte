@@ -11,9 +11,9 @@
     NDKEvent,
     NDKPrivateKeySigner,
     NDKSubscription,
+    NDKRelay,
     type NDKFilter,
     type NDKUserProfile,
-    type NDKUser,
   } from "@nostr-dev-kit/ndk";
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
@@ -110,7 +110,8 @@
     }
 
     // Default to the environment relays if no saved relays
-    return env.PUBLIC_RELAY_URL.split(",").map((url) => url.trim());
+    let relays = env.PUBLIC_RELAY_URL.split(",").map((url) => url.trim());
+    return relays;
   }
 
   // price slider
@@ -131,12 +132,12 @@
   let isMessageValid = false;
   let message: MessageContent = {};
 
-  let showAlertOnPageReload = false;
-  let showAlertOnSubmittingSuccess = false;
+  let showAlertOnSelectUnsubmitted = false;
   let showAlertOnSubmittingInvalid = false;
   let showAlertOnAlreadySubmitted = false;
-  let showAlertOnSelectUnsubmitted = false;
+  let showAlertOnSubmittingSuccess = false;
   let showAlertOnSelectingSelf = false;
+  let showAlertOnPageReload = false;
   let showAlertOnInvalidKey = false;
 
   let showYouGotSelected = false;
@@ -156,7 +157,7 @@
   async function handleRegister(event: CustomEvent): Promise<void> {
     name = event.detail.name;
     city = event.detail.city;
-    avatar = event.detail.image;
+    avatar = event.detail.avatar;
     signer = event.detail.signer;
 
     if (signer) {
@@ -175,9 +176,10 @@
 
     pubkey = (await signer.user()).pubkey;
 
-    await ndk.connect().then(() => console.log("Connected"));
-    await setProfileData(ndk, name, city, avatar);
-
+    await ndk.connect();
+    // .then(() => console.log("Connected"))
+    await setProfileData();
+    // .then(() => {
     // Check if the message is valid and submit it automatically
     validateMessage();
     if (isMessageValid && isAuthenticated && name.length > 0) {
@@ -185,13 +187,13 @@
         await handleSubmit();
       } catch (error) {
         console.error("Error submitting message after registration:", error);
-        setTimeout(async () => {
-          await handleSubmit();
-        }, 300);
+        // setTimeout(async () => {
+        // handleSubmit();
+        // }, 300);
       }
     }
 
-    await initMessages();
+    return await initMessages();
   }
 
   async function getUserProfile(
@@ -207,12 +209,7 @@
     return user.profile as NDKUserProfile;
   }
 
-  async function setProfileData(
-    ndk: NDK,
-    name: string,
-    city: City | null,
-    avatar: string,
-  ): Promise<void> {
+  async function setProfileData(): Promise<Set<NDKRelay>> {
     const metadataEvent = new NDKEvent(ndk);
     metadataEvent.kind = 0;
     const content = JSON.stringify({
@@ -222,19 +219,9 @@
     });
 
     metadataEvent.content = content;
-    await metadataEvent.sign();
-    try {
-      await metadataEvent.publish();
-    } catch (error) {
-      console.log(error);
-      setTimeout(async () => {
-        await metadataEvent
-          .publish()
-          .then(() =>
-            console.log("retry publishing kind: ", metadataEvent.kind),
-          );
-      }, 300);
-    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return await metadataEvent.publish();
   }
 
   function getCityFromProfile(profile: NDKUserProfile): City | null {
@@ -696,7 +683,6 @@
       ["p", selectedAuthor],
     ];
     replyEvent.content = ownEvent?.event.content || "";
-    await replyEvent.sign();
     await replyEvent.publish();
     messages = [];
     userProfiles.clear();
@@ -776,7 +762,7 @@
       (message.location?.trim().length || 0) > 0;
   }
 
-  async function handleSubmit(): Promise<void> {
+  async function handleSubmit(): Promise<NDKEvent | undefined> {
     if (submitted) {
       showAlertOnAlreadySubmitted = true;
       setTimeout(() => (showAlertOnAlreadySubmitted = false), 1500);
@@ -797,16 +783,16 @@
     }
 
     try {
-      await sendMessage(message);
-      // Show success alert only after successful submission
       showAlertOnSubmittingSuccess = true;
-      setTimeout(() => (showAlertOnSubmittingSuccess = false), 3000);
+      return await sendMessage(message);
     } catch (error) {
       console.error("Error submitting message:", error);
+    } finally {
+      setTimeout(() => (showAlertOnSubmittingSuccess = false), 3000);
     }
   }
 
-  async function sendMessage(message: MessageContent): Promise<void> {
+  async function sendMessage(message: MessageContent): Promise<NDKEvent> {
     const ndkEvent = new NDKEvent(ndk);
     ndkEvent.kind = 1;
 
@@ -828,15 +814,13 @@
 
     await ndkEvent.sign();
     try {
-      setTimeout(
-        () => ndkEvent.publish().then((success) => (submitted = ndkEvent)),
-        300,
-      );
+      await ndkEvent.publish();
+      submitted = ndkEvent;
     } catch (error) {
       console.error(error);
       submitted = null;
     }
-    // return ndkEvent;
+    return ndkEvent;
   }
 
   async function openOrJoinChat(): Promise<void> {
@@ -1236,7 +1220,7 @@
                 reactionEvent.kind = reactionData.kind;
                 reactionEvent.content = reactionData.content;
                 reactionEvent.tags = reactionData.tags;
-                await reactionEvent.sign();
+                // await reactionEvent.sign();
                 await reactionEvent.publish();
               } catch (error) {
                 console.error("Error publishing reaction:", error);
@@ -1276,7 +1260,6 @@
         </div>
       </div>
     {/if}
-
     {#if showAlertOnInvalidKey}
       <div
         class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"

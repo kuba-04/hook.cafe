@@ -190,7 +190,6 @@
       image: avatar,
     });
     metadataEvent.content = content;
-    await metadataEvent.sign();
     await metadataEvent.publish();
   }
 
@@ -320,7 +319,6 @@
         }
       });
 
-      await relayListEvent.sign();
       await relayListEvent.publish();
 
       // Save to localStorage

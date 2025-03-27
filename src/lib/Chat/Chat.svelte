@@ -87,7 +87,6 @@
       });
       event.tags = [["e", channelId]];
 
-      await event.sign();
       await event.publish();
       newMessage = "";
       scrollToBottom();
