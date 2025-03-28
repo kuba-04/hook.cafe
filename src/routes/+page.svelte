@@ -11,9 +11,9 @@
     NDKEvent,
     NDKPrivateKeySigner,
     NDKSubscription,
+    NDKRelay,
     type NDKFilter,
     type NDKUserProfile,
-    type NDKUser,
   } from "@nostr-dev-kit/ndk";
   import { nip19 } from "nostr-tools";
   import TimeRangePicker from "../lib/TimeRangePicker.svelte";
@@ -25,6 +25,7 @@
   import OnSubmittingSuccessAlert from "$lib/alerts/OnSubmittingSuccessAlert.svelte";
   import OnSelectingSelfAlert from "$lib/alerts/OnSelectingSelfAlert.svelte";
   import OnSelectUnsubmittedAlert from "$lib/alerts/OnSelectUnsubmittedAlert.svelte";
+  import OnInvalidKeyAlert from "$lib/alerts/OnInvalidKeyAlert.svelte";
   import Inspiration from "$lib/Inspiration.svelte";
   import InspirationModal from "$lib/InspirationModal.svelte";
   import Tooltip from "$lib/Tooltip.svelte";
@@ -62,14 +63,14 @@
   let isAuthenticated = false;
   let name = "";
   let city: City | null = null;
-  let avatar = "";
+  let avatar: string | number | undefined = "";
   let privKey = "";
   let pubkey = "";
   let signer: NDKPrivateKeySigner;
   let signerProfile: NDKUserProfile;
   let subscription: NDKSubscription;
   let messages: Message[] = [];
-  let userProfiles = new Map<string, Author>();
+  let userProfiles = new Map<string, NDKUserProfile>();
   let submitted: NDKEvent | null = null;
   let selectedAuthor = "";
   let channelId: string | null = null;
@@ -88,6 +89,29 @@
   function getRandomLoadingImage(): string {
     const randomIndex = Math.floor(Math.random() * loadingImages.length);
     return `/images/loading/${loadingImages[randomIndex]}`;
+  }
+
+  function loadUserRelays(): Array<string> {
+    // Load relays from localStorage
+    const savedRelays = localStorage.getItem("userRelays");
+    if (savedRelays) {
+      try {
+        const relayList = JSON.parse(savedRelays);
+        // Filter to get only active relays
+        return relayList
+          .filter(
+            (relay: { url: string; read: boolean; write: boolean }) =>
+              relay.read || relay.write,
+          )
+          .map((relay: { url: string }) => relay.url);
+      } catch (e) {
+        console.error("Failed to parse saved relays:", e);
+      }
+    }
+
+    // Default to the environment relays if no saved relays
+    let relays = env.PUBLIC_RELAY_URL.split(",").map((url) => url.trim());
+    return relays;
   }
 
   // price slider
@@ -114,6 +138,7 @@
   let showAlertOnSubmittingSuccess = false;
   let showAlertOnSelectingSelf = false;
   let showAlertOnPageReload = false;
+  let showAlertOnInvalidKey = false;
 
   let showYouGotSelected = false;
   let myFollowEvent: NDKEvent | null = null;
@@ -128,12 +153,6 @@
   const toggleMainImage = (): void => {
     isImageCartoon = !isImageCartoon;
   };
-
-  function getAvatarUrl(avatarPath: string): string {
-    if (!avatarPath) return "";
-    const fileName = avatarPath.split("/").pop(); // Get filename from path
-    return `${AVATAR_BASE_URL}/${fileName}`;
-  }
 
   async function handleRegister(event: CustomEvent): Promise<void> {
     name = event.detail.name;
@@ -151,32 +170,30 @@
     }
 
     ndk = new NDK({
-      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
+      explicitRelayUrls: loadUserRelays(),
       signer: signer,
     });
 
     pubkey = (await signer.user()).pubkey;
 
-    await ndk
-      .connect()
-      .then(() => console.log("Connected to NDK successfully"));
-    await setProfileData(ndk, name, city, avatar);
-
+    await ndk.connect();
+    // .then(() => console.log("Connected"))
+    await setProfileData();
+    // .then(() => {
     // Check if the message is valid and submit it automatically
     validateMessage();
     if (isMessageValid && isAuthenticated && name.length > 0) {
       try {
-        setTimeout(async () => {
-          await handleSubmit();
-          // Hide the form after successful submission
-          submitted = await sendMessage(message);
-        }, 1000);
+        await handleSubmit();
       } catch (error) {
         console.error("Error submitting message after registration:", error);
+        // setTimeout(async () => {
+        // handleSubmit();
+        // }, 300);
       }
     }
 
-    await initMessages();
+    return await initMessages();
   }
 
   async function getUserProfile(
@@ -188,36 +205,28 @@
     });
 
     await user.fetchProfile();
-    return user.profile as NDKUserProfile;
+    await user.fetchProfile();
+    return Promise.resolve(user.profile as NDKUserProfile);
   }
 
-  async function setProfileData(
-    ndk: NDK,
-    name: string,
-    city: City | null,
-    avatar: string,
-  ): Promise<void> {
+  async function setProfileData(): Promise<Set<NDKRelay>> {
     const metadataEvent = new NDKEvent(ndk);
     metadataEvent.kind = 0;
     const content = JSON.stringify({
       name: name,
-      about: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
+      bio: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
       image: avatar,
     });
+
     metadataEvent.content = content;
-    await metadataEvent.sign();
-    try {
-      await metadataEvent.publish();
-    } catch (error) {
-      setTimeout(async () => {
-        await metadataEvent.publish();
-      }, 1000);
-    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return await metadataEvent.publish();
   }
 
   function getCityFromProfile(profile: NDKUserProfile): City | null {
-    if (!profile.about) return null;
-    const [cityName, cityCountry, tz] = profile.about.split(",");
+    if (!profile.bio) return null;
+    const [cityName, cityCountry, tz] = profile.bio.split(",");
     if (!cityName || !cityCountry || !tz) {
       console.log("Missing city data parts");
       return null;
@@ -257,16 +266,30 @@
       return;
     }
 
+    let userRelays = loadUserRelays();
+
     ndk = new NDK({
-      explicitRelayUrls: [env.PUBLIC_RELAY_URL],
+      explicitRelayUrls: userRelays,
       signer: signer,
     });
     await ndk.connect();
-    isAuthenticated = true;
-    showModal = false;
 
     pubkey = (await signer.user()).pubkey;
     const profile = await getUserProfile(ndk, pubkey);
+    let profile_found = profile.created_at !== undefined;
+
+    if (!profile_found) {
+      console.log("Couldn't find your key in specified relays: ", userRelays);
+      localStorage.clear();
+      showModal = false;
+      showAlertOnInvalidKey = true;
+      setTimeout(() => (showAlertOnInvalidKey = false), 2000);
+      return;
+    }
+
+    isAuthenticated = true;
+    showModal = false;
+
     signerProfile = profile;
     name = profile?.name || "";
     city = getCityFromProfile(profile);
@@ -328,7 +351,7 @@
         ) || [];
 
       ndk = new NDK({
-        explicitRelayUrls: [env.PUBLIC_RELAY_URL],
+        explicitRelayUrls: loadUserRelays(),
         signer: signer,
       });
       await ndk.connect();
@@ -368,22 +391,23 @@
   async function initMessages(): Promise<void> {
     subscription = ndk.subscribe([
       {
-        kinds: [1, 7],
+        kinds: [1, 7, 10002],
         since: getBODTimestamp(city?.tz || ""),
         until: getEODTimestamp(city?.tz || ""),
       },
       KIND_0_FILTER,
     ]);
     subscription.on("event", async (event: NDKEvent) => {
+      if (event.kind === 10002 && event.pubkey === pubkey) {
+        handleRelayListUpdate(event);
+        return;
+      }
+
       const eventCity: City = {
         cityName: event.tags?.find((t) => t[0] === "city")?.[1] || "",
         cityCountry: event.tags?.find((t) => t[0] === "city")?.[2] || "",
         tz: event.tags?.find((t) => t[0] === "city")?.[3] || "",
       };
-
-      // if (isTheSameCity(city, eventCity) && isRootNote(event)) {
-      //   await addMessage(event);
-      // }
 
       if (
         isTheSameCity(city, eventCity) &&
@@ -399,6 +423,32 @@
     });
 
     await fetchMessages();
+  }
+
+  function handleRelayListUpdate(event: NDKEvent): void {
+    const newRelays: Array<{ url: string; read: boolean; write: boolean }> = [];
+
+    event.tags
+      .filter((tag) => tag[0] === "r")
+      .forEach((tag) => {
+        const url = tag[1];
+        const permission = tag[2] || "read-write";
+
+        newRelays.push({
+          url,
+          read:
+            permission === "read" || permission === "read-write" || !permission,
+          write:
+            permission === "write" ||
+            permission === "read-write" ||
+            !permission,
+        });
+      });
+
+    if (newRelays.length > 0) {
+      localStorage.setItem("userRelays", JSON.stringify(newRelays));
+      console.log("Updated relay list:", newRelays);
+    }
   }
 
   async function fetchMessages(): Promise<void> {
@@ -423,8 +473,6 @@
       ) {
         addMessage(event);
       }
-
-      // await handleReactions(event);
     }
   }
 
@@ -489,7 +537,7 @@
 
     subscription = ndk.subscribe([
       {
-        kinds: [1, 7],
+        kinds: [1, 7, 10002],
         since: getBODTimestamp(city?.tz || ""),
         until: getEODTimestamp(city?.tz || ""),
       },
@@ -503,13 +551,17 @@
         tz: event.tags?.find((t) => t[0] === "city")?.[3] || "",
       };
 
+      if (event.kind === 10002 && event.pubkey === pubkey) {
+        handleRelayListUpdate(event);
+        return;
+      }
+
       if (isRootNote(event) && event.pubkey === pubkey) {
         await addMessage(event);
       } else if (
         selectedAuthor.length === 0 &&
         isTheSameCity(city, eventCity)
       ) {
-        // adding all events from the same city
         await addMessage(event);
       } else {
         await fetchNestedSelect(selectedAuthor);
@@ -561,11 +613,6 @@
     const idExists = messages.some((m) => m.event.id === event.id);
     const pubkeyExists = messages.some((m) => m.event.pubkey === eventPubkey);
 
-    // const eventCity: City = {
-    //   cityName: event.tags.find((t) => t[0] === "city")?.[1] || "",
-    //   cityCountry: event.tags.find((t) => t[0] === "city")?.[2] || "",
-    // };
-
     if (!idExists && !pubkeyExists) {
       messages = [{ event: event, author: null } as Message, ...messages].sort(
         (a, b) => (b.event.created_at ?? 0) - (a.event.created_at ?? 0),
@@ -580,10 +627,13 @@
   async function fetchUserProfile(eventPubkey: string): Promise<void> {
     if (userProfiles.has(eventPubkey)) return;
     const user = ndk.getUser({ pubkey: eventPubkey });
+    // todo: https://github.com/nostr-dev-kit/ndk/issues/232
+    await user.fetchProfile();
     await user.fetchProfile();
     const profile = user.profile;
     if (profile) {
-      userProfiles.set(eventPubkey, profile as unknown as Author);
+      // console.log("Fetched profile for event: ", profile);
+      userProfiles.set(eventPubkey, profile);
       validateMessagesWithProfile(eventPubkey, profile);
       loadingComplete = isLoadingComplete();
     }
@@ -633,7 +683,6 @@
       ["p", selectedAuthor],
     ];
     replyEvent.content = ownEvent?.event.content || "";
-    await replyEvent.sign();
     await replyEvent.publish();
     messages = [];
     userProfiles.clear();
@@ -713,7 +762,7 @@
       (message.location?.trim().length || 0) > 0;
   }
 
-  async function handleSubmit(): Promise<void> {
+  async function handleSubmit(): Promise<NDKEvent | undefined> {
     if (submitted) {
       showAlertOnAlreadySubmitted = true;
       setTimeout(() => (showAlertOnAlreadySubmitted = false), 1500);
@@ -734,12 +783,12 @@
     }
 
     try {
-      await sendMessage(message);
-      // Show success alert only after successful submission
       showAlertOnSubmittingSuccess = true;
-      setTimeout(() => (showAlertOnSubmittingSuccess = false), 3000);
+      return await sendMessage(message);
     } catch (error) {
       console.error("Error submitting message:", error);
+    } finally {
+      setTimeout(() => (showAlertOnSubmittingSuccess = false), 3000);
     }
   }
 
@@ -763,11 +812,10 @@
       ["priceTo", message.priceTo || ""],
     ];
 
-    submitted = ndkEvent;
-
     await ndkEvent.sign();
     try {
       await ndkEvent.publish();
+      submitted = ndkEvent;
     } catch (error) {
       console.error(error);
       submitted = null;
@@ -966,25 +1014,58 @@
   <div
     class="relative isolate overflow-hidden bg-gray-900 min-h-screen flex justify-center px-4 sm:px-6 lg:px-8"
   >
-    <!-- Global alerts that overlay the content -->
-    {#if showAlertOnPageReload || showAlertOnSubmittingSuccess || showAlertOnSubmittingInvalid || showAlertOnAlreadySubmitted || showAlertOnSelectUnsubmitted || showAlertOnSelectingSelf || showYouGotSelected || showRejectionAlert}
-      <!-- Backdrop with blur effect -->
-      <div
-        class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40"
-      ></div>
-    {/if}
-
+    <!-- Global alerts -->
     {#if showAlertOnPageReload}
-      <div class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="max-w-sm">
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showAlertOnPageReload = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showAlertOnPageReload = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
           <OnPageLoadAlert />
         </div>
       </div>
     {/if}
 
     {#if showAlertOnSubmittingSuccess}
-      <div class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="max-w-sm">
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showAlertOnSubmittingSuccess = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showAlertOnSubmittingSuccess = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
           <OnSubmittingSuccessAlert
             on:showAlert={() => (showAlertOnSubmittingSuccess = false)}
           />
@@ -993,40 +1074,140 @@
     {/if}
 
     {#if showAlertOnSubmittingInvalid}
-      <div class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="max-w-sm">
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showAlertOnSubmittingInvalid = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showAlertOnSubmittingInvalid = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
           <OnSubmitInvalidAlert />
         </div>
       </div>
     {/if}
 
     {#if showAlertOnAlreadySubmitted}
-      <div class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="max-w-sm">
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showAlertOnAlreadySubmitted = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showAlertOnAlreadySubmitted = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
           <OnAlreadySubmittedAlert />
         </div>
       </div>
     {/if}
 
     {#if showAlertOnSelectUnsubmitted}
-      <div class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="max-w-sm">
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showAlertOnSelectUnsubmitted = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showAlertOnSelectUnsubmitted = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
           <OnSelectUnsubmittedAlert />
         </div>
       </div>
     {/if}
 
     {#if showAlertOnSelectingSelf}
-      <div class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="max-w-sm">
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showAlertOnSelectingSelf = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showAlertOnSelectingSelf = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
           <OnSelectingSelfAlert />
         </div>
       </div>
     {/if}
 
     {#if showYouGotSelected}
-      <div class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="max-w-sm">
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showYouGotSelected = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showYouGotSelected = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
           <div class="text-lg font-semibold leading-6 text-white mb-2">
             Someone selected you!
           </div>
@@ -1039,7 +1220,7 @@
                 reactionEvent.kind = reactionData.kind;
                 reactionEvent.content = reactionData.content;
                 reactionEvent.tags = reactionData.tags;
-                await reactionEvent.sign();
+                // await reactionEvent.sign();
                 await reactionEvent.publish();
               } catch (error) {
                 console.error("Error publishing reaction:", error);
@@ -1053,9 +1234,56 @@
     {/if}
 
     {#if showRejectionAlert}
-      <div class="fixed inset-0 flex items-center justify-center z-50">
-        <div class="max-w-sm">
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showRejectionAlert = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showRejectionAlert = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
           <SomeoneRejectedMeAlert eventData={rejectionEvent} />
+        </div>
+      </div>
+    {/if}
+    {#if showAlertOnInvalidKey}
+      <div
+        class="fixed top-4 left-0 right-0 mx-auto max-w-md z-50 px-4"
+        on:click={() => (showAlertOnInvalidKey = false)}
+      >
+        <div class="relative" on:click|stopPropagation>
+          <button
+            class="absolute top-2 right-2 text-gray-400 hover:text-white z-10"
+            on:click={() => (showAlertOnInvalidKey = false)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+          <OnInvalidKeyAlert />
         </div>
       </div>
     {/if}
@@ -1319,12 +1547,12 @@
                     <div class="flex min-w-0 gap-x-7">
                       <div class="flex min-w-10 items-center relative">
                         {#if !message.author?.image}
-                          <div class="avatarLoader">Loading...</div>
+                          <div class="avatarLoader"></div>
                         {:else}
                           <div class="relative">
                             <img
                               class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                              src={message?.author?.image || ""}
+                              src={message?.author?.image}
                               alt=""
                             />
                             {#if eventsInGroup.has(message.event.pubkey)}

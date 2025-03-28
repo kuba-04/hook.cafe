@@ -7,7 +7,11 @@
     let profile: NDKUserProfile | null = null;
 
     async function getUserProfile(pubkey: string): Promise<void> {
-        const ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL] });
+        const ndk = new NDK({
+            explicitRelayUrls: env.PUBLIC_RELAY_URL.split(",").map((url) =>
+                url.trim(),
+            ),
+        });
         await ndk.connect();
         const user = ndk.getUser({ pubkey });
         profile = await user.fetchProfile();
@@ -25,7 +29,7 @@
     <div class="flex min-w-0 gap-x-7">
         <div class="flex min-w-10 items-center">
             {#if !profile?.image}
-                <div class="avatarLoader">Loading...</div>
+                <!-- <div class="avatarLoader">Loading...</div> -->
             {:else}
                 <img
                     class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500"

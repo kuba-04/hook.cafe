@@ -21,14 +21,14 @@
     tz: string;
   }
 
-  let selectedAvatar = "";
+  let selectedAvatar: string | undefined | number = "";
   let ndk: NDK;
   let name = "";
   let npub: string;
   let hexPubkey: string;
   let privKey: string = "";
   let keyArray: Uint8Array;
-  let avatar = "";
+  let avatar: string | undefined | number = "";
   let showModal = false;
   let showAlertOnSave = false;
   let hasAlreadySubmitted = false;
@@ -45,6 +45,12 @@
   let city: City | null = null;
   let avatars: string[] = [];
 
+  // Relay management
+  let relays: Array<{ url: string; read: boolean; write: boolean }> = [];
+  let newRelayUrl = "";
+  let showAddRelayError = false;
+  let addRelayErrorMessage = "";
+
   onMount(async () => {
     avatars = getAllAvatars();
     npub = $page.params.id;
@@ -58,6 +64,25 @@
       goto("/");
     }
 
+    // Load relays from localStorage first for faster display
+    const savedRelays = localStorage.getItem("userRelays");
+    if (savedRelays) {
+      try {
+        relays = JSON.parse(savedRelays);
+      } catch (e) {
+        console.error("Failed to parse saved relays:", e);
+      }
+    }
+
+    // Add default relay from env if no relays exist
+    if (relays.length === 0) {
+      relays = env.PUBLIC_RELAY_URL.split(",").map((url) => ({
+        url: url.trim(),
+        read: true,
+        write: true,
+      }));
+    }
+
     if (typeof privKey === "string") {
       keyArray = new Uint8Array(
         privKey.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || [],
@@ -65,18 +90,26 @@
     }
 
     const signer = new NDKPrivateKeySigner(keyArray);
-    ndk = new NDK({ explicitRelayUrls: [env.PUBLIC_RELAY_URL], signer });
+    ndk = new NDK({
+      explicitRelayUrls: env.PUBLIC_RELAY_URL.split(",").map((url) =>
+        url.trim(),
+      ),
+      signer,
+    });
     await ndk.connect();
 
     const profile = await getUserProfile(ndk, npub);
     name = profile.name || "";
-    if (profile.about) {
-      const [cityName, cityCountry, tz] = profile.about.split(",");
+    if (profile.bio) {
+      const [cityName, cityCountry, tz] = profile.bio.split(",");
       city =
         cityName && cityCountry && tz ? { cityName, cityCountry, tz } : null;
     }
     query = city ? `${city.cityName}, ${city.cityCountry}, ${city.tz}` : "";
     avatar = profile.image || "";
+
+    // Fetch relay list from the network
+    await fetchRelayList();
 
     ndk
       .fetchEvents({
@@ -86,7 +119,27 @@
         until: getEODTimestamp(),
       })
       .then((events) => {
-        if (events.size > 0) {
+        // TODO: we need a new kind for this
+        const requiredTags = [
+          "topic1",
+          "topic2",
+          "topic3",
+          "topic4",
+          "timeFrom",
+          "timeTo",
+          "location",
+          "city",
+          "priceFrom",
+          "priceTo",
+        ];
+
+        const matchingEvents = Array.from(events).filter((event) =>
+          requiredTags.every((tagName) =>
+            event.tags.some((tag) => tag[0] === tagName),
+          ),
+        );
+
+        if (matchingEvents.length > 0) {
           hasAlreadySubmitted = true;
         }
       });
@@ -112,6 +165,7 @@
       npub,
     });
     hexPubkey = user.pubkey;
+    await user.fetchProfile();
     await user.fetchProfile();
     return user.profile || ({} as NDKUserProfile);
   }
@@ -153,11 +207,10 @@
     metadataEvent.kind = 0;
     const content = JSON.stringify({
       name: name,
-      about: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
+      bio: city ? `${city.cityName},${city.cityCountry},${city.tz}` : "",
       image: avatar,
     });
     metadataEvent.content = content;
-    await metadataEvent.sign();
     await metadataEvent.publish();
   }
 
@@ -220,6 +273,147 @@
     } else {
       return nip19.nsecEncode(hexKey);
     }
+  }
+
+  async function fetchRelayList(): Promise<void> {
+    try {
+      // Fetch kind:10002 events for the user
+      const relayListEvents = await ndk.fetchEvents({
+        kinds: [10002],
+        authors: [hexPubkey],
+      });
+
+      // Get the most recent event
+      const relayListEvent = Array.from(relayListEvents).sort(
+        (a, b) => (b.created_at || 0) - (a.created_at || 0),
+      )[0];
+
+      if (relayListEvent) {
+        // Parse relay list from the event
+        const newRelays: Array<{ url: string; read: boolean; write: boolean }> =
+          [];
+
+        relayListEvent.tags
+          .filter((tag) => tag[0] === "r")
+          .forEach((tag) => {
+            const url = tag[1];
+            const permission = tag[2] || "read-write";
+
+            newRelays.push({
+              url,
+              read:
+                permission === "read" ||
+                permission === "read-write" ||
+                !permission,
+              write:
+                permission === "write" ||
+                permission === "read-write" ||
+                !permission,
+            });
+          });
+
+        if (newRelays.length > 0) {
+          relays = newRelays;
+          // Save to localStorage
+          localStorage.setItem("userRelays", JSON.stringify(relays));
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching relay list:", error);
+    }
+  }
+
+  async function publishRelayList(): Promise<void> {
+    try {
+      const relayListEvent = new NDKEvent(ndk);
+      relayListEvent.kind = 10002;
+      relayListEvent.content = "";
+
+      // Add relay tags
+      relays.forEach((relay) => {
+        if (relay.read && relay.write) {
+          relayListEvent.tags.push(["r", relay.url]);
+        } else if (relay.read) {
+          relayListEvent.tags.push(["r", relay.url, "read"]);
+        } else if (relay.write) {
+          relayListEvent.tags.push(["r", relay.url, "write"]);
+        }
+      });
+
+      await relayListEvent.publish();
+
+      // Save to localStorage
+      localStorage.setItem("userRelays", JSON.stringify(relays));
+    } catch (error) {
+      console.error("Error publishing relay list:", error);
+    }
+  }
+
+  function addRelay(): void {
+    // Validate URL
+    try {
+      const url = new URL(newRelayUrl);
+      if (url.protocol !== "wss:" && url.protocol !== "ws:") {
+        showAddRelayError = true;
+        addRelayErrorMessage = "Relay URL must use ws:// or wss:// protocol";
+        return;
+      }
+
+      // Check if relay already exists
+      if (relays.some((relay) => relay.url === newRelayUrl)) {
+        showAddRelayError = true;
+        addRelayErrorMessage = "This relay is already in your list";
+        return;
+      }
+
+      // Add relay
+      relays = [
+        ...relays,
+        {
+          url: newRelayUrl,
+          read: true,
+          write: true,
+        },
+      ];
+
+      // Clear input and error
+      newRelayUrl = "";
+      showAddRelayError = false;
+
+      // Save changes
+      publishRelayList();
+    } catch (error) {
+      showAddRelayError = true;
+      addRelayErrorMessage = "Invalid URL format";
+    }
+  }
+
+  function removeRelay(url: string): void {
+    // Don't allow removing the last relay
+    if (relays.length <= 1) {
+      return;
+    }
+
+    relays = relays.filter((relay) => relay.url !== url);
+    publishRelayList();
+  }
+
+  function toggleRelayPermission(
+    url: string,
+    permission: "read" | "write",
+  ): void {
+    relays = relays.map((relay) => {
+      if (relay.url === url) {
+        if (permission === "read") {
+          return { ...relay, read: !relay.read };
+        } else {
+          return { ...relay, write: !relay.write };
+        }
+      }
+      return relay;
+    });
+
+    publishRelayList();
   }
 </script>
 
@@ -325,47 +519,95 @@
       </div>
       {#if showAlertOnSave}
         <div
-          class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300"
-          role="alert"
+          class="fixed inset-0 flex items-center justify-center z-50"
+          on:click={() => (showAlertOnSave = false)}
         >
-          <svg
-            class="flex-shrink-0 inline w-4 h-4 me-3"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="currentColor"
-            viewBox="0 0 20 20"
+          <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+          <div
+            class="relative bg-gray-700 p-4 rounded-lg shadow-lg max-w-md"
+            on:click|stopPropagation
           >
-            <path
-              d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
-            />
-          </svg>
-          <span class="sr-only">Info</span>
-          <span class="text-lg font-semibold leading-6 text-white">
-            Some fields are not filled!
-          </span>
+            <button
+              class="absolute top-2 right-2 text-gray-400 hover:text-white"
+              on:click={() => (showAlertOnSave = false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </button>
+            <div class="flex items-center">
+              <svg
+                class="flex-shrink-0 w-6 h-6 me-3 text-yellow-300"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
+                />
+              </svg>
+              <span class="text-lg font-semibold leading-6 text-white">
+                Some fields are not filled!
+              </span>
+            </div>
+          </div>
         </div>
       {/if}
       {#if showAlertOnAlreadySubmitted}
         <div
-          class="absolute items-center p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-gray-500 dark:text-yellow-300"
-          role="alert"
+          class="fixed inset-0 flex items-center justify-center z-50"
+          on:click={() => (showAlertOnAlreadySubmitted = false)}
         >
-          <svg
-            class="flex-shrink-0 inline w-4 h-4 me-3"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="currentColor"
-            viewBox="0 0 20 20"
+          <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+          <div
+            class="relative bg-gray-700 p-4 rounded-lg shadow-lg max-w-md"
+            on:click|stopPropagation
           >
-            <path
-              d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
-            />
-          </svg>
-          <span class="sr-only">Info</span>
-          <span class="text-lg font-semibold leading-6 text-white">
-            You can't change the city if already sent request for it. Wait until
-            it expires.
-          </span>
+            <button
+              class="absolute top-2 right-2 text-gray-400 hover:text-white"
+              on:click={() => (showAlertOnAlreadySubmitted = false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </button>
+            <div class="flex items-center">
+              <svg
+                class="flex-shrink-0 w-6 h-6 me-3 text-yellow-300"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"
+                />
+              </svg>
+              <span class="text-lg font-semibold leading-6 text-white">
+                You can't change the city if already sent request for it. Wait
+                until it expires.
+              </span>
+            </div>
+          </div>
         </div>
       {/if}
     </nav>
@@ -500,20 +742,59 @@
               </p>
             </dd>
             <div class="left-10 flex items-center">
-              {#if !showAlertOnCopyNpub}
-                <button
-                  on:click={copyNpub}
-                  class="copy-button text-sm text-gray-300"
-                >
-                  copy
-                </button>
-              {/if}
+              <button
+                on:click={copyNpub}
+                class="copy-button text-sm text-gray-300"
+              >
+                copy
+              </button>
+
               {#if showAlertOnCopyNpub}
                 <div
-                  class="text-sm text-blue-800 rounded-lg dark:text-blue-400"
-                  role="alert"
+                  class="fixed inset-0 flex items-center justify-center z-50"
+                  on:click={() => (showAlertOnCopyNpub = false)}
                 >
-                  <button class="font-medium">copied!</button>
+                  <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+                  <div
+                    class="relative bg-gray-700 p-4 rounded-lg shadow-lg max-w-md"
+                    on:click|stopPropagation
+                  >
+                    <button
+                      class="absolute top-2 right-2 text-gray-400 hover:text-white"
+                      on:click={() => (showAlertOnCopyNpub = false)}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                    <div class="flex items-center">
+                      <svg
+                        class="flex-shrink-0 w-6 h-6 me-3 text-blue-400"
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          clip-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        />
+                      </svg>
+                      <span class="text-lg font-semibold leading-6 text-white">
+                        NPUB copied to clipboard!
+                      </span>
+                    </div>
+                  </div>
                 </div>
               {/if}
             </div>
@@ -526,8 +807,8 @@
               <p
                 class="mt-1 text-xs leading-6 text-gray-400 sm:col-span-2 sm:mt-0"
               >
-                Your password (but cannot be changed!) we recommend you saving
-                it in a password manager or keeping secure (you can't log in
+                Your password (but cannot be changed!) we recommend saving it in
+                a password manager or keeping secure (you can't log in again
                 without your key!)
               </p>
               <p
@@ -539,8 +820,186 @@
               </p>
             </dd>
           </div>
+          <!-- Relay Management Section -->
           <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-            <dt class="text-sm font-medium leading-6 text-gray-300">Avatar</dt>
+            <dt class="text-sm font-medium leading-6 text-gray-300">Relays</dt>
+            <dd
+              class="mt-1 text-sm leading-6 text-gray-300 sm:col-span-2 sm:mt-0"
+            >
+              <p class="text-xs leading-6 text-gray-400 mb-4">
+                Relays are servers that store and distribute your posts.
+              </p>
+
+              <!-- Add new relay form -->
+              <div class="mb-6">
+                <div class="flex items-center">
+                  <div class="relative flex-grow max-w-md">
+                    <input
+                      bind:value={newRelayUrl}
+                      type="text"
+                      placeholder="wss://relay.example.com"
+                      class="w-full rounded-md border-0 bg-white/5 px-3.5 py-2 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6 pr-16"
+                    />
+                    {#if newRelayUrl}
+                      <button
+                        class="absolute inset-y-0 right-8 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                        on:click={() => {
+                          newRelayUrl = "";
+                        }}
+                        type="button"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    {/if}
+                    <button
+                      on:click={addRelay}
+                      type="button"
+                      class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-green-500"
+                      title="Add Relay"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                {#if showAddRelayError}
+                  <div
+                    class="fixed inset-0 flex items-center justify-center z-50"
+                    on:click={() => (showAddRelayError = false)}
+                  >
+                    <div class="absolute inset-0 bg-black bg-opacity-30"></div>
+                    <div
+                      class="relative bg-gray-700 p-4 rounded-lg shadow-lg max-w-md"
+                      on:click|stopPropagation
+                    >
+                      <button
+                        class="absolute top-2 right-2 text-gray-400 hover:text-white"
+                        on:click={() => (showAddRelayError = false)}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-5 w-5"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                      <div class="flex items-center">
+                        <svg
+                          class="flex-shrink-0 w-6 h-6 me-3 text-red-400"
+                          aria-hidden="true"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                        <span
+                          class="text-lg font-semibold leading-6 text-white"
+                        >
+                          {addRelayErrorMessage}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Relay list -->
+              <div class="space-y-3 max-w-md">
+                {#each relays as relay (relay.url)}
+                  <div
+                    class="flex items-center justify-between p-3 bg-gray-800 rounded-lg"
+                  >
+                    <div class="flex-grow">
+                      <p class="text-sm font-medium text-gray-200 break-all">
+                        {relay.url}
+                      </p>
+                      <div class="flex mt-1 space-x-4">
+                        <label class="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={relay.read}
+                            on:change={() =>
+                              toggleRelayPermission(relay.url, "read")}
+                            class="form-checkbox h-4 w-4 text-teal-500 rounded accent-teal-500"
+                          />
+                          <span class="ml-2 text-xs text-gray-400">Read</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={relay.write}
+                            on:change={() =>
+                              toggleRelayPermission(relay.url, "write")}
+                            class="form-checkbox h-4 w-4 text-teal-500 rounded accent-teal-500"
+                          />
+                          <span class="ml-2 text-xs text-gray-400">Write</span>
+                        </label>
+                      </div>
+                    </div>
+                    <button
+                      on:click={() => removeRelay(relay.url)}
+                      class="text-gray-400 hover:text-red-500 ml-2"
+                      disabled={relays.length <= 1}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                {/each}
+              </div>
+            </dd>
+          </div>
+
+          <div class="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+            <dt class="text-sm font-medium leading-6 text-gray-300">Picture</dt>
             <dd>
               <button on:click={showAvatars}>
                 <img
