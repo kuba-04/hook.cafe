@@ -206,7 +206,7 @@
 
     await user.fetchProfile();
     await user.fetchProfile();
-    return user.profile as NDKUserProfile;
+    return Promise.resolve(user.profile as NDKUserProfile);
   }
 
   async function setProfileData(): Promise<Set<NDKRelay>> {

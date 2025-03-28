@@ -119,7 +119,27 @@
         until: getEODTimestamp(),
       })
       .then((events) => {
-        if (events.size > 0) {
+        // TODO: we need a new kind for this
+        const requiredTags = [
+          "topic1",
+          "topic2",
+          "topic3",
+          "topic4",
+          "timeFrom",
+          "timeTo",
+          "location",
+          "city",
+          "priceFrom",
+          "priceTo",
+        ];
+
+        const matchingEvents = Array.from(events).filter((event) =>
+          requiredTags.every((tagName) =>
+            event.tags.some((tag) => tag[0] === tagName),
+          ),
+        );
+
+        if (matchingEvents.length > 0) {
           hasAlreadySubmitted = true;
         }
       });
@@ -145,6 +165,7 @@
       npub,
     });
     hexPubkey = user.pubkey;
+    await user.fetchProfile();
     await user.fetchProfile();
     return user.profile || ({} as NDKUserProfile);
   }
