@@ -33,7 +33,6 @@
   import SomeoneRejectedMeAlert from "$lib/alerts/SomeoneRejectedMeAlert.svelte";
   import type {
     City,
-    Author,
     ParsedContent,
     MessageContent,
     Message,
@@ -67,7 +66,6 @@
   let privKey = "";
   let pubkey = "";
   let signer: NDKPrivateKeySigner;
-  let signerProfile: NDKUserProfile;
   let subscription: NDKSubscription;
   let messages: Message[] = [];
   let userProfiles = new Map<string, NDKUserProfile>();
@@ -147,8 +145,8 @@
 
   let isImageCartoon = true;
 
-  let eventsInGroup = new Set<string>(); // Store IDs of messages with positive reactions
-  let rejectedEvents = new Set<string>(); // Store IDs of messages with negative reactions
+  let eventsInGroup = new Set<string>();
+  let rejectedEvents = new Set<string>();
 
   const toggleMainImage = (): void => {
     isImageCartoon = !isImageCartoon;
@@ -177,19 +175,13 @@
     pubkey = (await signer.user()).pubkey;
 
     await ndk.connect();
-    // .then(() => console.log("Connected"))
     await setProfileData();
-    // .then(() => {
-    // Check if the message is valid and submit it automatically
     validateMessage();
     if (isMessageValid && isAuthenticated && name.length > 0) {
       try {
         await handleSubmit();
       } catch (error) {
         console.error("Error submitting message after registration:", error);
-        // setTimeout(async () => {
-        // handleSubmit();
-        // }, 300);
       }
     }
 
@@ -290,7 +282,6 @@
     isAuthenticated = true;
     showModal = false;
 
-    signerProfile = profile;
     name = profile?.name || "";
     city = getCityFromProfile(profile);
     avatar = profile?.image || "";
@@ -358,7 +349,6 @@
 
       pubkey = (await signer.user()).pubkey;
       const profile = await getUserProfile(ndk, pubkey);
-      signerProfile = profile;
       name = profile?.name || "";
       city = getCityFromProfile(profile);
       avatar = profile?.image || "";
@@ -632,7 +622,6 @@
     await user.fetchProfile();
     const profile = user.profile;
     if (profile) {
-      // console.log("Fetched profile for event: ", profile);
       userProfiles.set(eventPubkey, profile);
       validateMessagesWithProfile(eventPubkey, profile);
       loadingComplete = isLoadingComplete();
@@ -1344,13 +1333,15 @@
         <div class="flex flex-col justify-center items-center h-96 mt-8">
           <div class="text-center">
             <div
-              class="my-20 relative overflow-hidden rounded-lg shadow-lg max-w-md mx-auto"
+              class="my-20 relative overflow-hidden rounded-lg shadow-lg max-w-md mx-auto min-h-[300px]"
             >
-              <img
-                src={randomLoadingImage}
-                alt="Inspiration"
-                class="w-full object-cover"
-              />
+              {#if randomLoadingImage}
+                <img
+                  src={randomLoadingImage}
+                  alt="Inspiration"
+                  class="w-full h-full object-cover"
+                />
+              {/if}
               <div
                 class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center"
               >
