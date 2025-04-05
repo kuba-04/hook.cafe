@@ -1540,18 +1540,27 @@
                         {#if !message.author?.image}
                           <div class="avatarLoader"></div>
                         {:else}
-                          <div class="relative">
-                            <img
-                              class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
-                              src={message?.author?.image}
-                              alt=""
-                            />
-                            {#if eventsInGroup.has(message.event.pubkey)}
-                              <div class="absolute -bottom-1 -right-1">
-                                <span class="text-xs">✅</span>
+                          <Tooltip text="See on nosta.me!" position="center">
+                            <a
+                              href="https://nosta.me/{nip19.npubEncode(
+                                message.event.pubkey,
+                              )}"
+                              target="_blank"
+                            >
+                              <div class="relative">
+                                <img
+                                  class="w-10 h-10 p-1 rounded-full ring-2 ring-gray-300 dark:ring-gray-500 hover:bg-blue-200"
+                                  src={message?.author?.image}
+                                  alt=""
+                                />
+                                {#if eventsInGroup.has(message.event.pubkey)}
+                                  <div class="absolute -bottom-1 -right-1">
+                                    <span class="text-xs">✅</span>
+                                  </div>
+                                {/if}
                               </div>
-                            {/if}
-                          </div>
+                            </a>
+                          </Tooltip>
                         {/if}
                       </div>
                       <div class="grid grid-cols-1 gap-0 content-center">
